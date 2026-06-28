@@ -1,0 +1,9 @@
+---
+homematic_uart_enabled: true
+homematic_uart_install_hmcfgusb: false
+homematic_uart_boot_config_path: /boot/firmware/config.txt
+homematic_uart_serial_getty_service: serial-getty@ttyAMA0.service
+homematic_uart_boot_config_lines:
+  - enable_uart=1
+  - dtoverlay=miniuart-bt
+  - core_freq=250

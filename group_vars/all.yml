@@ -1,0 +1,35 @@
+---
+raspberrypi_packages:
+  - apt-utils
+  - screen
+  - e2fsprogs
+  - console-setup
+  - raspi-config
+  - unzip
+  - libsys-statistics-linux-perl
+  - socat
+  - libusb-1.0-0-dev
+  - console-data
+  - cifs-utils
+  - telnet
+  - avrdude
+  - raspi-copies-and-fills
+  - rng-tools
+  - iptables
+  - iptables-persistent
+  - watchdog
+  - keyboard-configuration
+  - avahi-utils
+  - unattended-upgrades
+  - vlan
+  - ser2net
+
+raspberrypi_kernel_cmdline: "dwc_otg.lpm_enable=0 console=tty1 elevator=deadline fsck.repair=yes enable_uart=1"
+raspberrypi_boot_size: "+256M"
+raspberrypi_timezone: "Europe/Berlin"
+raspberrypi_keyboard_layout: "de"
+raspberrypi_locale: "de_DE.UTF-8"
+raspberrypi_locales:
+  - "de_DE.UTF-8"
+raspberrypi_ntp_server: "de.pool.ntp.org"
+raspberrypi_watchdog_enabled: true

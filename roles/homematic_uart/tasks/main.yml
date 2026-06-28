@@ -1,0 +1,58 @@
+---
+- name: Configure Homematic UART support
+  become: true
+  when: homematic_uart_enabled | bool
+  vars:
+    homematic_uart_checkout: "{{ homematic_uart_path | default('/opt/hmcfgusb') }}"
+    homematic_uart_firmware_source: "{{ homematic_uart_firmware_url | default('https://raw.githubusercontent.com/eq-3/occu/28045df83480122f90ab92f7c6e625f9bf3b61aa/firmware/HM-MOD-UART/coprocessor_update.eq3') }}"
+    homematic_uart_repo_url: "{{ homematic_uart_repo | default('git://git.zerfleddert.de/hmcfgusb') }}"
+  block:
+    - name: Ensure UART boot configuration is present
+      ansible.builtin.lineinfile:
+        path: "{{ homematic_uart_boot_config_path }}"
+        regexp: "^{{ item | regex_escape() }}$"
+        line: "{{ item }}"
+        insertafter: EOF
+        create: true
+        mode: "0644"
+      loop: "{{ homematic_uart_boot_config_lines }}"
+
+    - name: Disable and mask serial console on ttyAMA0
+      ansible.builtin.systemd:
+        name: "{{ homematic_uart_serial_getty_service }}"
+        enabled: false
+        masked: true
+        state: stopped
+
+    - name: Ensure Homematic build dependencies are present
+      ansible.builtin.apt:
+        name:
+          - build-essential
+          - git
+          - libusb-1.0-0-dev
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: homematic_uart_install_hmcfgusb | bool
+
+    - name: Clone hmcfgusb repository
+      ansible.builtin.git:
+        repo: "{{ homematic_uart_repo_url }}"
+        dest: "{{ homematic_uart_checkout }}"
+        update: false
+      when: homematic_uart_install_hmcfgusb | bool
+
+    - name: Build hmcfgusb
+      ansible.builtin.command:
+        cmd: make
+        chdir: "{{ homematic_uart_checkout }}"
+        creates: "{{ homematic_uart_checkout }}/hmcfgusb"
+      when: homematic_uart_install_hmcfgusb | bool
+
+    - name: Download Homematic firmware helper
+      ansible.builtin.get_url:
+        url: "{{ homematic_uart_firmware_source }}"
+        dest: "{{ homematic_uart_checkout }}/coprocessor_update.eq3"
+        mode: "0644"
+      when: homematic_uart_install_hmcfgusb | bool

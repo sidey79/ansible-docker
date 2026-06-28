@@ -1,0 +1,90 @@
+---
+- name: Configure Docker host
+  become: true
+  when: docker_host_enabled | bool
+  block:
+    - name: Check for USB-backed Docker tree
+      ansible.builtin.stat:
+        path: "{{ docker_host_usb_tree | default('/media/usb1/opt/docker') }}"
+      register: docker_host_usb_tree_stat
+
+    - name: Ensure Docker host packages are present
+      ansible.builtin.apt:
+        name: "{{ docker_host_packages | default(['docker-ce', 'python3-pip', 'libffi-dev', 'libssl-dev']) }}"
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: docker_host_usb_tree_stat.stat.exists
+
+    - name: Enable Docker service
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+        state: started
+      when: docker_host_usb_tree_stat.stat.exists
+
+    - name: Install docker-compose
+      ansible.builtin.pip:
+        name: docker-compose
+        executable: pip3
+      when: docker_host_usb_tree_stat.stat.exists
+
+    - name: Link Docker tree into /opt
+      ansible.builtin.file:
+        src: "{{ docker_host_usb_tree | default('/media/usb1/opt/docker') }}"
+        dest: "{{ docker_host_opt_path | default('/opt/docker') }}"
+        state: link
+        force: true
+      when: docker_host_usb_tree_stat.stat.exists
+
+    - name: Find docker-compose files
+      ansible.builtin.find:
+        paths: "{{ docker_host_opt_path | default('/opt/docker') }}"
+        patterns: docker-compose.yml
+        file_type: file
+        recurse: true
+        follow: true
+      register: docker_host_compose_files
+      when: docker_host_usb_tree_stat.stat.exists
+
+    - name: Read docker-compose files
+      ansible.builtin.slurp:
+        src: "{{ item.path }}"
+      loop: "{{ docker_host_compose_files.files }}"
+      register: docker_host_compose_slurped
+      when:
+        - docker_host_usb_tree_stat.stat.exists
+        - docker_host_compose_files.matched | int > 0
+
+    - name: Collect referenced Docker images
+      ansible.builtin.set_fact:
+        docker_host_images: >-
+          {{
+            docker_host_compose_slurped.results
+            | map(attribute='content')
+            | map('b64decode')
+            | map('regex_findall', '(?m)^\s*image:\s*([^#\n]+)')
+            | flatten
+            | map('trim')
+            | reject('equalto', '')
+            | unique
+            | list
+          }}
+      when:
+        - docker_host_usb_tree_stat.stat.exists
+        - docker_host_compose_files.matched | int > 0
+
+    - name: Pull Docker images referenced by compose files
+      ansible.builtin.command:
+        argv:
+          - docker
+          - pull
+          - "{{ item }}"
+      register: docker_host_pull_result
+      changed_when: >-
+        docker_host_pull_result.stdout is search('Downloaded newer image|Pull complete|Downloaded')
+      loop: "{{ docker_host_images | default([]) }}"
+      when:
+        - docker_host_usb_tree_stat.stat.exists
+        - docker_host_images | default([]) | length > 0

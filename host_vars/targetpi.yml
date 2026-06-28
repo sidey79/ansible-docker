@@ -1,0 +1,9 @@
+---
+storage_mounts_fritz_nas_share: "/srv/fritz.nas-source"
+storage_mounts_fritz_nas_fstype: "none"
+storage_mounts_fritz_nas_opts: "bind"
+storage_mounts_fritz_nas_username: "ftpuser"
+storage_mounts_fritz_nas_password: "xxxxxx"
+storage_mounts_fritz_nas_uid: 1000
+storage_mounts_fritz_nas_credentials_path: "/home/pi/.smbcredentials"
+storage_mounts_usb_device: "/dev/nonexistent"

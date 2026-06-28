@@ -1,0 +1,29 @@
+---
+raspberrypi_hostname: "pi3"
+raspberrypi_domain_name: "blausee.eu"
+raspberrypi_release: "trixie"
+
+raspberrypi_network_interface: "eth0"
+raspberrypi_network_address: "dhcp"
+raspberrypi_network_netmask: "0.0.0.0"
+raspberrypi_network_gateway: "0.0.0.0"
+raspberrypi_network_nameservers: []
+
+raspberrypi_root_ssh_password_login: false
+
+raspberrypi_user_name: "pi"
+raspberrypi_user_admin: true
+raspberrypi_user_groups:
+  - adm
+  - tty
+  - dialout
+  - cdrom
+  - sudo
+  - audio
+  - video
+  - plugdev
+  - games
+  - users
+  - netdev
+  - input
+raspberrypi_user_ssh_public_key_file: "authorized_keys"

@@ -1,0 +1,3 @@
+---
+ser2net_config_dest: /etc/ser2net.yaml
+ser2net_connections: []

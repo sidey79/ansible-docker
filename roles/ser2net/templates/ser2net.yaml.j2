@@ -1,0 +1,23 @@
+%YAML 1.1
+---
+# This is a ser2net configuration file, tailored to be rather
+# simple.
+#
+# Find detailed documentation in ser2net.yaml(5)
+# A fully featured configuration file is in
+# /usr/share/doc/ser2net/examples/ser2net.yaml.gz
+#
+# If you find your configuration more useful than this very simple
+# one, please submit it as a bugreport
+
+define: &banner \r\nser2net port \p device \d [\B] (Debian GNU/Linux)\r\n\r\n
+{% for connection in ser2net_connections %}
+connection: &{{ connection.name }}
+  accepter: {{ connection.accepter }}
+  enable: {{ 'on' if (connection.enable | default(true) | bool) else 'off' }}
+  connector: {{ connection.connector }}
+{% if connection.options is defined and connection.options | length > 0 %}
+  options:
+{{ connection.options | to_nice_yaml(indent=2) | indent(4, true) }}
+{% endif %}
+{% endfor %}

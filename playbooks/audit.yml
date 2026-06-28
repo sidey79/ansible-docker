@@ -1,0 +1,44 @@
+---
+- name: Audit Raspberry Pi configuration
+  hosts: raspberrypi
+  become: true
+  gather_facts: true
+  check_mode: true
+  vars:
+    audit_include_docker_host: false
+  tasks:
+    - name: Audit storage mounts
+      ansible.builtin.include_role:
+        name: storage_mounts
+
+    - name: Audit firewall
+      ansible.builtin.include_role:
+        name: firewall
+
+    - name: Audit ser2net
+      ansible.builtin.include_role:
+        name: ser2net
+
+    - name: Audit Homematic UART
+      ansible.builtin.include_role:
+        name: homematic_uart
+      when: homematic_uart_enabled | bool
+
+    - name: Audit unattended upgrades
+      ansible.builtin.include_role:
+        name: unattended_upgrades
+
+    - name: Audit Docker host
+      ansible.builtin.include_role:
+        name: docker_host
+      when: audit_include_docker_host | bool
+
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Show managed service state
+      ansible.builtin.debug:
+        msg:
+          - "netfilter-persistent: {{ ansible_facts.services[\"netfilter-persistent.service\"].state | default(\"absent\") }} / {{ ansible_facts.services[\"netfilter-persistent.service\"].status | default(\"absent\") }}"
+          - "ser2net: {{ ansible_facts.services[\"ser2net.service\"].state | default(\"absent\") }} / {{ ansible_facts.services[\"ser2net.service\"].status | default(\"absent\") }}"
+      when: ansible_facts.services is defined

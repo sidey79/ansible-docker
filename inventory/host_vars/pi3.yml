@@ -1,0 +1,44 @@
+---
+storage_mounts_fritz_nas_share: "//fritz7690.fritz.box/fritz7690"
+storage_mounts_fritz_nas_mountpoint: "/mnt/fritznas"
+storage_mounts_fritz_nas_fstype: "cifs"
+storage_mounts_fritz_nas_opts: "uid=109,vers=3.0,credentials=/home/pi/.smbcredentials"
+storage_mounts_fritz_nas_uid: 109
+storage_mounts_fritz_nas_credentials_path: "/home/pi/.smbcredentials"
+storage_mounts_usb_device: "/dev/nonexistent"
+
+firewall_enabled: true
+firewall_trusted_source: 10.2.11.57
+firewall_allowed_subnet: 10.2.11.0/24
+firewall_http_ports:
+  - 80
+  - 443
+firewall_smb_ports:
+  - 445
+firewall_ssh_port: 22
+firewall_ser2net_ports:
+  - 45020
+  - 45021
+  - 45108
+
+ser2net_connections:
+  - name: toSignalduinotcp
+    accepter: tcp,45020
+    enable: on
+    connector: serialdev,/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9S3Z1H5-if00-port0,57600n81,local
+    options:
+      kickolduser: true
+  - name: toHMUARTtcp
+    accepter: tcp,45021
+    enable: on
+    connector: serialdev,/dev/serial0,115200n81,local
+    options:
+      kickolduser: true
+  - name: toConbee3tcp
+    accepter: tcp,45108
+    enable: on
+    connector: serialdev,/dev/serial/by-id/usb-dresden_elektronik_ConBee_III_DE03314511-if00-port0,115200n81,local
+    options:
+      kickolduser: true
+
+homematic_uart_enabled: true

@@ -1,0 +1,60 @@
+---
+- name: Configure iptables firewall
+  become: true
+  block:
+    - name: Ensure firewall packages are present
+      ansible.builtin.apt:
+        name:
+          - iptables
+          - iptables-persistent
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when:
+        - firewall_enabled | bool
+        - not ansible_check_mode
+
+    - name: Ensure iptables configuration directory exists
+      ansible.builtin.file:
+        path: /etc/iptables
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      when: firewall_enabled | bool
+
+    - name: Render iptables rules
+      ansible.builtin.template:
+        src: rules.v4.j2
+        dest: "{{ firewall_rules_dest }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: firewall_rules_render
+      when: firewall_enabled | bool
+      notify: Restart netfilter persistent
+
+    - name: Enable firewall persistence
+      ansible.builtin.service:
+        name: netfilter-persistent
+        enabled: true
+        state: started
+      when:
+        - firewall_enabled | bool
+        - not ansible_check_mode
+
+    - name: Disable firewall persistence when firewall is disabled
+      ansible.builtin.service:
+        name: netfilter-persistent
+        enabled: false
+        state: stopped
+      when:
+        - not firewall_enabled | bool
+        - not ansible_check_mode
+
+    - name: Remove persisted firewall rules when firewall is disabled
+      ansible.builtin.file:
+        path: "{{ firewall_rules_dest }}"
+        state: absent
+      when: not firewall_enabled | bool

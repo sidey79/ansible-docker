@@ -1,0 +1,15 @@
+---
+firewall_enabled: false
+firewall_rules_dest: /etc/iptables/rules.v4
+firewall_trusted_source: 10.2.11.86
+firewall_allowed_subnet: 10.2.11.0/24
+firewall_http_ports:
+  - 80
+  - 443
+firewall_smb_ports:
+  - 445
+firewall_ssh_port: 22
+firewall_ser2net_ports:
+  - 45020
+  - 45021
+  - 45022

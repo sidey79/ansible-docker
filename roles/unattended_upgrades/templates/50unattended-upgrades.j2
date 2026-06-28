@@ -1,0 +1,6 @@
+// Managed by Ansible.
+Unattended-Upgrade::Origins-Pattern {
+        "o=Raspbian,n={{ raspberrypi_release | default('trixie') }}";
+};
+Unattended-Upgrade::Mail "root";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";

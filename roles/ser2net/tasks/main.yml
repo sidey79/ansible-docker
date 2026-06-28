@@ -1,0 +1,58 @@
+---
+- name: Configure ser2net
+  become: true
+  vars:
+    ser2net_has_config: "{{ ser2net_connections | default([]) | length > 0 }}"
+  block:
+    - name: Ensure ser2net package is present
+      ansible.builtin.apt:
+        name:
+          - ser2net
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: not ansible_check_mode
+
+    - name: Render ser2net configuration
+      ansible.builtin.template:
+        src: ser2net.yaml.j2
+        dest: "{{ ser2net_config_dest }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: ser2net_config_render
+      when: ser2net_has_config | bool
+
+    - name: Remove ser2net configuration when no connections are defined
+      ansible.builtin.file:
+        path: "{{ ser2net_config_dest }}"
+        state: absent
+      when: not (ser2net_has_config | bool)
+
+    - name: Enable ser2net service
+      ansible.builtin.service:
+        name: ser2net
+        enabled: true
+        state: started
+      when:
+        - not ansible_check_mode
+        - ser2net_has_config | bool
+
+    - name: Disable ser2net service when no configuration is defined
+      ansible.builtin.service:
+        name: ser2net
+        enabled: false
+        state: stopped
+      when:
+        - not ansible_check_mode
+        - not (ser2net_has_config | bool)
+
+    - name: Restart ser2net when configuration changes
+      ansible.builtin.service:
+        name: ser2net
+        state: restarted
+      when:
+        - not ansible_check_mode
+        - ser2net_has_config | bool
+        - ser2net_config_render is changed

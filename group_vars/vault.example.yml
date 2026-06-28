@@ -1,0 +1,10 @@
+---
+# Copy this file to a vault file and replace the placeholders with
+# ansible-vault encrypted values.
+raspberrypi_root_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  replace-with-ansible-vault-encrypted-data
+
+raspberrypi_user_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  replace-with-ansible-vault-encrypted-data

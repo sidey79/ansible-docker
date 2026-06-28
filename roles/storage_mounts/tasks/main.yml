@@ -1,0 +1,81 @@
+---
+- name: Configure storage mounts
+  become: true
+  block:
+    - name: Ensure mountpoint packages are present
+      ansible.builtin.apt:
+        name:
+          - cifs-utils
+        state: present
+        update_cache: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: not ansible_check_mode
+
+    - name: Ensure mountpoint directories exist
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop:
+        - path: "{{ storage_mounts_usb_mountpoint | default('/media/usb1') }}"
+          mode: "0777"
+        - path: "{{ storage_mounts_fritz_nas_mountpoint | default('/mnt/fritznas') }}"
+          mode: "0777"
+
+    - name: Write CIFS credentials
+      ansible.builtin.copy:
+        dest: "{{ storage_mounts_fritz_nas_credentials_path | default('/home/pi/.smbcredentials') }}"
+        content: |
+          username={{ storage_mounts_fritz_nas_username | default('ftpuser') }}
+          password={{ storage_mounts_fritz_nas_password | default('xxxxxx') }}
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+
+    - name: Ensure local NAS bind source exists
+      ansible.builtin.file:
+        path: "{{ storage_mounts_fritz_nas_share }}"
+        state: directory
+        mode: "0755"
+      when:
+        - storage_mounts_fritz_nas_opts | default('') == 'bind'
+
+    - name: Mount NAS share via bind
+      ansible.posix.mount:
+        path: "{{ storage_mounts_fritz_nas_mountpoint | default('/mnt/fritznas') }}"
+        src: "{{ storage_mounts_fritz_nas_share }}"
+        fstype: none
+        opts: bind
+        state: mounted
+        dump: "0"
+        passno: "0"
+      when: storage_mounts_fritz_nas_opts | default('') == 'bind'
+
+    - name: Mount NAS share via CIFS
+      ansible.posix.mount:
+        path: "{{ storage_mounts_fritz_nas_mountpoint | default('/mnt/fritznas') }}"
+        src: "{{ storage_mounts_fritz_nas_share | default('//10.2.11.1/fritz.nas') }}"
+        fstype: cifs
+        opts: "{{ storage_mounts_fritz_nas_opts | default('uid=' ~ (storage_mounts_fritz_nas_uid | default(109)) ~ ',vers=1.0,credentials=' ~ (storage_mounts_fritz_nas_credentials_path | default('/home/pi/.smbcredentials'))) }}"
+        state: mounted
+        dump: "0"
+        passno: "0"
+      when: storage_mounts_fritz_nas_opts | default('') != 'bind'
+
+    - name: Check for USB-backed root device
+      ansible.builtin.stat:
+        path: "{{ storage_mounts_usb_device | default('/dev/sda1') }}"
+      register: storage_mounts_usb_device_stat
+
+    - name: Mount USB-backed storage
+      ansible.posix.mount:
+        path: "{{ storage_mounts_usb_mountpoint | default('/media/usb1') }}"
+        src: "{{ storage_mounts_usb_device | default('/dev/sda1') }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+        dump: "0"
+        passno: "0"
+      when: storage_mounts_usb_device_stat.stat.exists

@@ -1,0 +1,6 @@
+.env
+keys/ansible_ed25519
+*.local
+
+
+.vault_pass

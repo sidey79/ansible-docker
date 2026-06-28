@@ -1,0 +1,15 @@
+---
+- name: Configure Raspberry Pi
+  hosts: raspberrypi
+  become: true
+  gather_facts: true
+  roles:
+    - storage_mounts
+    - firewall
+    - ser2net
+    - docker_host
+    - homematic_uart
+    - unattended_upgrades
+  tasks:
+    - name: Collect service facts
+      ansible.builtin.service_facts:

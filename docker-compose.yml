@@ -1,0 +1,42 @@
+name: ansible-docker
+
+services:
+  ansible:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ansible-docker
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./:/workspace
+      - ./keys/ansible_ed25519:/root/.ssh/id_ed25519:ro
+      - ./keys/ansible_ed25519.pub:/root/.ssh/id_ed25519.pub:ro
+    environment:
+      ANSIBLE_CONFIG: /workspace/ansible.cfg
+
+  targetpi:
+    profiles:
+      - test
+    build:
+      context: ./test-target
+      dockerfile: Dockerfile
+    container_name: ansible-targetpi
+    privileged: true
+    command: ["/usr/local/bin/entrypoint.sh"]
+    volumes:
+      - ./keys/ansible_ed25519.pub:/tmp/ansible_ed25519.pub:ro
+      - targetpi-srv:/srv/fritz.nas
+      - ./ua-netinst/usb1:/media/usb1:rw
+    environment:
+      PUBLIC_KEY_PATH: /tmp/ansible_ed25519.pub
+      SMB_PASSWORD: xxxxxx
+    extra_hosts:
+      - fritz.nas:127.0.0.1
+    networks:
+      default:
+        aliases:
+          - targetpi
+
+volumes:
+  targetpi-srv:

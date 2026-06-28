@@ -1,5 +1,8 @@
 .env
-keys/ansible_ed25519
+.codex/
+ua-netinst/
+keys/*
+!keys/ansible_ed25519.pub
 *.local
 
 

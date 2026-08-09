@@ -7,3 +7,4 @@ keys/*
 
 
 .vault_pass
+inventory/wsl.local.ini

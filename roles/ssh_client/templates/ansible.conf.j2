@@ -1,0 +1,21 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+{% for profile in ssh_client_hosts %}
+Host {{ profile.host }}
+  HostName {{ profile.hostname | default(profile.host) }}
+{% if profile.user is defined %}
+  User {{ profile.user }}
+{% endif %}
+{% if profile.port is defined %}
+  Port {{ profile.port }}
+{% endif %}
+{% if profile.identity_file is defined %}
+  IdentityFile {{ profile.identity_file }}
+{% endif %}
+{% if profile.identities_only is defined %}
+  IdentitiesOnly {{ profile.identities_only | ternary('yes', 'no') }}
+{% endif %}
+{% for option, value in profile.options | default({}) | dictsort %}
+  {{ option }} {{ value }}
+{% endfor %}
+
+{% endfor %}

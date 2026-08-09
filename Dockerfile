@@ -12,7 +12,7 @@ RUN apt-get update \
        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir ansible-core \
+RUN pip install --no-cache-dir "ansible-core>=2.19,<2.20" \
     && ansible-galaxy collection install ansible.posix
 
 RUN mkdir -p /root/.ssh /workspace

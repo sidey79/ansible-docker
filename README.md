@@ -82,7 +82,7 @@ cp inventory/wsl.example.ini inventory/wsl.local.ini
 
 Die Vorgabe verwendet den Inventory-Namen `wsl`, den WSL-Benutzer `sven` und den weitergeleiteten Port `2222`.
 
-SSH-Profile werden in `inventory/host_vars/wsl.yml` definiert:
+SSH-Profile werden in `inventory/host_vars/wsl/main.yml` definiert:
 
 ```yaml
 ssh_client_hosts:

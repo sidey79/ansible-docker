@@ -10,7 +10,17 @@ ssh_client_hosts:
     options:
       ServerAliveInterval: 60
 
-  - host: pi3 pi2
+  - host: pi3
+    hostname: pi3
+    user: pi
+    port: 22
+    identity_file: ~/.ssh/id_sven
+    identities_only: true
+    options:
+      ServerAliveInterval: 60
+
+  - host: pi2
+    hostname: pi2
     user: pi
     port: 22
     identity_file: ~/.ssh/id_sven

@@ -8,3 +8,9 @@ raspberrypi_root_password: !vault |
 raspberrypi_user_password: !vault |
   $ANSIBLE_VAULT;1.1;AES256
   replace-with-ansible-vault-encrypted-data
+
+# Reference these values from ssh_client_private_keys in host_vars.
+vault_ssh_client_private_keys:
+  example_key: !vault |
+    $ANSIBLE_VAULT;1.1;AES256
+    replace-with-ansible-vault-encrypted-private-key

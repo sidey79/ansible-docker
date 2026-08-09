@@ -17,11 +17,17 @@ firewall_smb_ports:
   - 445
 firewall_ssh_port: 22
 firewall_ser2net_ports:
+  - 45019
   - 45020
   - 45021
   - 45108
 
 ser2net_connections:
+  - name: signalduino-control
+    accepter: telnet(rfc2217),tcp,45019
+    connector: serialdev,/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9S3Z1H5-if00-port0,57600N81,local
+    options:
+      max-connections: 1
   - name: toSignalduinotcp
     accepter: tcp,45020
     enable: on

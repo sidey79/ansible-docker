@@ -1,0 +1,7 @@
+---
+- name: Configure SSH clients
+  hosts: ssh_clients
+  become: false
+  gather_facts: true
+  roles:
+    - ssh_client

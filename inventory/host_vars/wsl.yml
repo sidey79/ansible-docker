@@ -1,0 +1,40 @@
+---
+# Add SSH host profiles and private keys here when they should be deployed.
+ssh_client_hosts:
+  - host: tiffy
+    hostname: 192.168.125.4
+    user: git
+    port: 22
+    identity_file: ~/.ssh/id_sven
+    identities_only: true
+    options:
+      ServerAliveInterval: 60
+
+  - host: pi3 pi2
+    user: pi
+    port: 22
+    identity_file: ~/.ssh/id_sven
+    identities_only: true
+    options:
+      ServerAliveInterval: 60
+
+  - host: zeus
+    user: pi
+    port: 22
+    identity_file: ~/.ssh/id_sven
+    identities_only: true
+    options:
+      ServerAliveInterval: 60
+
+  - host: svnfhem
+    hostname: svn.fhem.de
+    user: Sidey
+    port: 55522
+    identity_file: ~/.ssh/id_sven
+    identities_only: true
+    options:
+      ServerAliveInterval: 60
+
+ssh_client_private_keys:
+  - name: id_sven
+    content: "{{ vault_ssh_client_private_keys.sven_key }}"

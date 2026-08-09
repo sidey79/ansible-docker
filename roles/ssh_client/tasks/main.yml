@@ -1,0 +1,79 @@
+---
+- name: Validate SSH client host profiles
+  ansible.builtin.assert:
+    that:
+      - item.host is defined
+      - item.host is string
+      - item.host | length > 0
+      - "'\\n' not in item.host"
+      - item.hostname is not defined or item.hostname is string
+      - item.user is not defined or item.user is string
+      - item.port is not defined or (item.port | int >= 1 and item.port | int <= 65535)
+      - item.identity_file is not defined or item.identity_file is string
+      - item.identities_only is not defined or item.identities_only is boolean
+      - item.options is not defined or item.options is mapping
+    fail_msg: "Invalid SSH client profile for {{ item.host | default('unknown host') }}"
+  loop: "{{ ssh_client_hosts }}"
+  loop_control:
+    label: "{{ item.host | default('unknown host') }}"
+
+- name: Validate managed private SSH keys
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.name is match('^[A-Za-z0-9_.-]+$')
+      - item.state | default('present') in ['present', 'absent']
+      - item.state | default('present') == 'absent' or item.content is defined
+    fail_msg: "Invalid managed private SSH key definition"
+  loop: "{{ ssh_client_private_keys }}"
+  no_log: true
+
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_client_home }}/.ssh"
+    state: directory
+    mode: "0700"
+
+- name: Ensure SSH configuration directory exists
+  ansible.builtin.file:
+    path: "{{ ssh_client_home }}/.ssh/config.d"
+    state: directory
+    mode: "0700"
+
+- name: Include Ansible-managed SSH client configuration
+  ansible.builtin.blockinfile:
+    path: "{{ ssh_client_home }}/.ssh/config"
+    create: true
+    insertbefore: BOF
+    marker: "# {mark} ANSIBLE MANAGED SSH CLIENT INCLUDE"
+    block: "Include ~/.ssh/config.d/ansible.conf"
+    mode: "0600"
+
+- name: Render Ansible-managed SSH client configuration
+  ansible.builtin.template:
+    src: ansible.conf.j2
+    dest: "{{ ssh_client_home }}/.ssh/config.d/ansible.conf"
+    mode: "0600"
+
+- name: Install managed private SSH keys
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ ssh_client_home }}/.ssh/{{ item.name }}"
+    mode: "0600"
+  loop: "{{ ssh_client_private_keys }}"
+  loop_control:
+    label: "managed private key"
+  when: item.state | default('present') == 'present'
+  diff: false
+  no_log: true
+
+- name: Remove explicitly absent private SSH keys
+  ansible.builtin.file:
+    path: "{{ ssh_client_home }}/.ssh/{{ item.name }}"
+    state: absent
+  loop: "{{ ssh_client_private_keys }}"
+  loop_control:
+    label: "managed private key"
+  when: item.state | default('present') == 'absent'
+  no_log: true

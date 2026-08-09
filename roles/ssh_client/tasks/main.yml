@@ -51,6 +51,27 @@
     path: "{{ ssh_client_home }}/.ssh/config.d"
   register: ssh_client_config_directory
 
+- name: Preview SSH config include in check mode when the target directory is absent
+  ansible.builtin.blockinfile:
+    path: "/tmp/ansible-ssh-client-{{ inventory_hostname }}-config"
+    create: true
+    insertbefore: BOF
+    marker: "# {mark} ANSIBLE MANAGED SSH CLIENT INCLUDE"
+    block: "Include ~/.ssh/config.d/ansible.conf"
+    mode: "0600"
+  when:
+    - ansible_check_mode
+    - not ssh_client_ssh_directory.stat.exists
+
+- name: Preview managed SSH client configuration in check mode when the target directory is absent
+  ansible.builtin.template:
+    src: ansible.conf.j2
+    dest: "/tmp/ansible-ssh-client-{{ inventory_hostname }}.conf"
+    mode: "0600"
+  when:
+    - ansible_check_mode
+    - not ssh_client_config_directory.stat.exists
+
 - name: Include Ansible-managed SSH client configuration
   ansible.builtin.blockinfile:
     path: "{{ ssh_client_home }}/.ssh/config"

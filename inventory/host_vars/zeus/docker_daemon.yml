@@ -1,0 +1,7 @@
+---
+# Imported from zeus; review daemon.json before enabling management.
+docker_daemon_config_import_reviewed: true
+docker_daemon_config_sha256: "2fbc65f71f672de5e9d2bc1e69a2bbd9cf128eecd592238d3b1370728d904048"
+docker_daemon_config_owner: "root"
+docker_daemon_config_group: "root"
+docker_daemon_config_mode: "0644"

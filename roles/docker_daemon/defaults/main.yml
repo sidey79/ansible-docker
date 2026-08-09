@@ -1,0 +1,6 @@
+---
+docker_daemon_config_path: /etc/docker/daemon.json
+docker_daemon_config_asset: "{{ inventory_hostname }}/daemon.json"
+docker_daemon_config_owner: root
+docker_daemon_config_group: root
+docker_daemon_config_mode: "0644"

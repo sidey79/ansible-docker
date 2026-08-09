@@ -1,0 +1,130 @@
+---
+- name: Validate mDNS service manifest
+  ansible.builtin.assert:
+    that:
+      - mdns_services is sequence
+      - mdns_services is not string
+      - (mdns_services | map(attribute='name') | list | unique | length) == (mdns_services | length)
+    fail_msg: mdns_services must be a list with unique service file names.
+
+- name: Validate mDNS service manifest entries
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.name is defined
+      - item.name is match('^(?!\.{1,2}$)[^/]+$')
+      - item.name is match('^[A-Za-z0-9][A-Za-z0-9._-]*\.service$')
+      - item.owner is defined
+      - item.group is defined
+      - item.mode is defined
+      - (item.mode | string) is match('^[0-7]{3,4}$')
+      - item.sha256 is defined
+      - item.sha256 is match('^[a-fA-F0-9]{64}$')
+    fail_msg: "Invalid mDNS service manifest entry: {{ item | to_nice_json }}"
+  loop: "{{ mdns_services }}"
+  loop_control:
+    label: "{{ item.name | default('missing name') }}"
+
+- name: Ensure Avahi daemon package is present
+  ansible.builtin.package:
+    name: "{{ mdns_services_package }}"
+    state: present
+
+- name: Ensure Avahi services directory exists
+  ansible.builtin.file:
+    path: "{{ mdns_services_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copy managed Avahi service definitions
+  ansible.builtin.copy:
+    src: "{{ inventory_hostname }}/{{ item.name }}"
+    dest: "{{ mdns_services_directory }}/{{ item.name }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ mdns_services }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload avahi-daemon
+
+- name: Discover existing Avahi service directory entries
+  ansible.builtin.find:
+    paths: "{{ mdns_services_directory }}"
+    recurse: false
+    file_type: any
+    hidden: true
+  register: mdns_services_directory_entries
+  when: mdns_services_authoritative | bool
+
+- name: Refuse special entries in authoritative Avahi directory
+  ansible.builtin.assert:
+    that:
+      - item.isreg | default(false)
+    fail_msg: "Refusing authoritative management because {{ item.path }} is not a regular file."
+  loop: "{{ mdns_services_directory_entries.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: mdns_services_authoritative | bool
+
+- name: Remove unmanaged Avahi service definitions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ mdns_services_directory_entries.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when:
+    - mdns_services_authoritative | bool
+    - (item.path | basename) not in (mdns_services | map(attribute='name') | list)
+  notify: Reload avahi-daemon
+
+- name: Validate Avahi alias unit manifest
+  ansible.builtin.assert:
+    that:
+      - avahi_alias_units is sequence
+      - avahi_alias_units is not string
+      - (avahi_alias_units | map(attribute='name') | list | unique | length) == (avahi_alias_units | length)
+    fail_msg: avahi_alias_units must be a list with unique systemd unit names.
+
+- name: Validate Avahi alias unit entries
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is match('^avahi-alias-[A-Za-z0-9@._-]+\.service$')
+      - item.owner is defined
+      - item.group is defined
+      - item.mode is defined
+      - item.enabled is defined
+      - item.state is defined
+      - item.state in ['started', 'stopped']
+    fail_msg: "Invalid Avahi alias unit manifest entry: {{ item | to_nice_json }}"
+  loop: "{{ avahi_alias_units }}"
+  loop_control:
+    label: "{{ item.name | default('missing name') }}"
+
+- name: Copy managed Avahi alias systemd units
+  ansible.builtin.copy:
+    src: "{{ inventory_hostname }}/avahi_alias/{{ item.name }}"
+    dest: "{{ avahi_alias_units_directory }}/{{ item.name }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ avahi_alias_units }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload systemd daemon
+
+- name: Reload systemd before applying Avahi alias unit states
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start managed Avahi alias units
+  ansible.builtin.systemd_service:
+    name: "{{ item.name }}"
+    enabled: "{{ item.enabled | bool }}"
+    state: "{{ item.state }}"
+  loop: "{{ avahi_alias_units }}"
+  loop_control:
+    label: "{{ item.name }}"

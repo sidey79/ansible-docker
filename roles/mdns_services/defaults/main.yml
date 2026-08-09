@@ -1,0 +1,9 @@
+---
+mdns_services_directory: /etc/avahi/services
+mdns_services_package: avahi-daemon
+mdns_services_daemon: avahi-daemon
+mdns_services: []
+mdns_services_authoritative: true
+avahi_alias_units_directory: /etc/systemd/system
+avahi_alias_units: []
+avahi_alias_units_authoritative: true

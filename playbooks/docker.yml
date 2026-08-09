@@ -1,0 +1,7 @@
+---
+- name: Manage Docker daemon configuration on Zeus
+  hosts: mdns_hosts
+  become: true
+  gather_facts: false
+  roles:
+    - docker_daemon

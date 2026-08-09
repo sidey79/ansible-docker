@@ -1,0 +1,18 @@
+---
+- name: Manage mDNS service definitions
+  hosts: mdns_hosts
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - name: Require a reviewed mDNS import manifest
+      ansible.builtin.assert:
+        that:
+          - mdns_services_import_reviewed | default(false) | bool
+        fail_msg: >-
+          The mDNS import manifest has not been reviewed. Run
+          playbooks/import_mdns_services.yml, review
+          inventory/host_vars/zeus/mdns_services.yml (including potential TXT
+          record secrets), then set mdns_services_import_reviewed to true.
+  roles:
+    - mdns_services
+

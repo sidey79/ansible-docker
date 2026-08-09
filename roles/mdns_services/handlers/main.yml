@@ -1,0 +1,9 @@
+---
+- name: Reload avahi-daemon
+  ansible.builtin.service:
+    name: "{{ mdns_services_daemon }}"
+    state: reloaded
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd_service:
+    daemon_reload: true

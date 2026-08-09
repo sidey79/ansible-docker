@@ -1,0 +1,242 @@
+---
+# One-way controller-side import; it never writes to Zeus.
+- name: Import Zeus Avahi service definitions for review
+  hosts: zeus
+  become: true
+  gather_facts: false
+  vars:
+    mdns_import_remote_directory: /etc/avahi/services
+    mdns_import_asset_directory: "{{ playbook_dir }}/../roles/mdns_services/files/{{ inventory_hostname }}"
+    mdns_import_manifest_path: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/mdns_services.yml"
+    mdns_import_sensitive_txt_pattern: >-
+      (?is)<txt-record\b[^>]*>[^<]*(?:pass(?:word)?|secret|token|api[_-]?key|authorization|bearer|credential|private[_-]?key)[^<]*</txt-record>
+  tasks:
+    - name: Inspect Avahi services directory
+      ansible.builtin.stat:
+        path: "{{ mdns_import_remote_directory }}"
+      register: mdns_import_directory
+    - name: Require existing Avahi services directory
+      ansible.builtin.assert:
+        that:
+          - mdns_import_directory.stat.isdir | default(false)
+        fail_msg: "{{ mdns_import_remote_directory }} is not a directory on {{ inventory_hostname }}."
+    - name: Discover non-recursive service entries
+      ansible.builtin.find:
+        paths: "{{ mdns_import_remote_directory }}"
+        recurse: false
+        file_type: any
+        hidden: true
+      register: mdns_import_entries
+    - name: Refuse non-regular service entries
+      ansible.builtin.assert:
+        that:
+          - item.isreg | default(false)
+          - (item.path | basename) is match('^[A-Za-z0-9][A-Za-z0-9._-]*\.service$')
+        fail_msg: "Refusing unsafe, symlinked, or non-regular entry {{ item.path }}."
+      loop: "{{ mdns_import_entries.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+    - name: Require unique service file names
+      ansible.builtin.assert:
+        that:
+          - (mdns_import_entries.files | map(attribute='path') | map('basename') | list | unique | length) == (mdns_import_entries.files | length)
+    - name: Screen TXT records for potential secrets
+      ansible.builtin.slurp:
+        src: "{{ item.path }}"
+      loop: "{{ mdns_import_entries.files }}"
+      register: mdns_import_contents
+      no_log: true
+    - name: Collect potentially sensitive service names
+      ansible.builtin.set_fact:
+        mdns_import_sensitive_files: "{{ (mdns_import_sensitive_files | default([])) + [item.item.path | basename] }}"
+      when: (item.content | b64decode) is search(mdns_import_sensitive_txt_pattern)
+      loop: "{{ mdns_import_contents.results }}"
+      no_log: true
+    - name: Require vault handling for sensitive TXT records
+      ansible.builtin.assert:
+        that:
+          - (mdns_import_sensitive_files | default([]) | length) == 0
+        fail_msg: "Potentially sensitive TXT record in {{ mdns_import_sensitive_files | default([]) | join(', ') }}; use Ansible Vault instead of importing cleartext."
+    - name: Collect SHA-256 checksums and metadata
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+        checksum_algorithm: sha256
+      loop: "{{ mdns_import_entries.files }}"
+      register: mdns_import_remote_stats
+    - name: Create static role asset directory
+      ansible.builtin.file:
+        path: "{{ mdns_import_asset_directory }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+    - name: Fetch service files byte-for-byte
+      ansible.builtin.fetch:
+        src: "{{ item.stat.path }}"
+        dest: "{{ mdns_import_asset_directory }}/"
+        flat: true
+        validate_checksum: true
+      loop: "{{ mdns_import_remote_stats.results }}"
+    - name: Check fetched SHA-256 checksums
+      ansible.builtin.stat:
+        path: "{{ mdns_import_asset_directory }}/{{ item.stat.path | basename }}"
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      become: false
+      loop: "{{ mdns_import_remote_stats.results }}"
+      register: mdns_import_local_stats
+    - name: Verify imported assets match Zeus
+      ansible.builtin.assert:
+        that:
+          - item.stat.checksum == mdns_import_remote_stats.results[ansible_loop.index0].stat.checksum
+        fail_msg: "Checksum mismatch after importing {{ item.item.stat.path | basename }}; no manifest was written."
+      loop: "{{ mdns_import_local_stats.results }}"
+      loop_control:
+        extended: true
+    - name: Gather package state for import report
+      ansible.builtin.package_facts:
+        manager: auto
+    - name: Gather service state for import report
+      ansible.builtin.service_facts:
+    - name: Build service manifest data
+      ansible.builtin.set_fact:
+        mdns_import_services: "{{ (mdns_import_services | default([])) + [ {'name': (item.stat.path | basename), 'owner': item.stat.pw_name, 'group': item.stat.gr_name, 'mode': item.stat.mode, 'sha256': item.stat.checksum} ] }}"
+      loop: "{{ mdns_import_remote_stats.results }}"
+    - name: Write unreviewed host manifest on controller
+      ansible.builtin.template:
+        src: templates/mdns_services_manifest.yml.j2
+        dest: "{{ mdns_import_manifest_path }}"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+
+- name: Import Zeus Avahi alias systemd units for review
+  hosts: zeus
+  become: true
+  gather_facts: false
+  vars:
+    avahi_alias_units_directory: /etc/systemd/system
+    avahi_alias_assets_directory: "{{ playbook_dir }}/../roles/mdns_services/files/{{ inventory_hostname }}/avahi_alias"
+    avahi_alias_manifest_path: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/mdns_services.yml"
+  tasks:
+    - name: Discover Avahi alias unit files
+      ansible.builtin.find:
+        paths: "{{ avahi_alias_units_directory }}"
+        patterns: "avahi-alias-*.service"
+        use_regex: false
+        recurse: false
+        file_type: any
+      register: avahi_alias_entries
+    - name: Refuse non-regular Avahi alias entries
+      ansible.builtin.assert:
+        that:
+          - item.isreg | default(false)
+          - (item.path | basename) is match('^avahi-alias-[A-Za-z0-9@._-]+\.service$')
+        fail_msg: "Refusing unsafe or non-regular Avahi alias unit {{ item.path }}."
+      loop: "{{ avahi_alias_entries.files }}"
+    - name: Collect Avahi alias metadata and SHA-256 checksums
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+        checksum_algorithm: sha256
+      loop: "{{ avahi_alias_entries.files }}"
+      register: avahi_alias_remote_stats
+    - name: Query Avahi alias enablement
+      ansible.builtin.command:
+        argv: [systemctl, is-enabled, "{{ item.stat.path | basename }}"]
+      loop: "{{ avahi_alias_remote_stats.results }}"
+      register: avahi_alias_enabled
+      changed_when: false
+      failed_when: false
+    - name: Query Avahi alias active state
+      ansible.builtin.command:
+        argv: [systemctl, is-active, "{{ item.stat.path | basename }}"]
+      loop: "{{ avahi_alias_remote_stats.results }}"
+      register: avahi_alias_active
+      changed_when: false
+      failed_when: false
+    - name: Create controller asset directory for Avahi alias units
+      ansible.builtin.file:
+        path: "{{ avahi_alias_assets_directory }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+    - name: Fetch Avahi alias unit files byte-for-byte
+      ansible.builtin.fetch:
+        src: "{{ item.stat.path }}"
+        dest: "{{ avahi_alias_assets_directory }}/"
+        flat: true
+        validate_checksum: true
+      loop: "{{ avahi_alias_remote_stats.results }}"
+    - name: Build Avahi alias unit manifest data
+      ansible.builtin.set_fact:
+        avahi_alias_units: "{{ (avahi_alias_units | default([])) + [ {'name': (item.stat.path | basename), 'owner': item.stat.pw_name, 'group': item.stat.gr_name, 'mode': item.stat.mode, 'sha256': item.stat.checksum, 'enabled': (avahi_alias_enabled.results[ansible_loop.index0].rc == 0), 'state': ('started' if avahi_alias_active.results[ansible_loop.index0].rc == 0 else 'stopped')} ] }}"
+      loop: "{{ avahi_alias_remote_stats.results }}"
+      loop_control:
+        extended: true
+    - name: Write final unreviewed manifest including Avahi alias units
+      ansible.builtin.template:
+        src: templates/mdns_services_manifest.yml.j2
+        dest: "{{ avahi_alias_manifest_path }}"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+
+- name: Import Zeus Docker daemon configuration for review
+  hosts: zeus
+  become: true
+  gather_facts: false
+  vars:
+    docker_daemon_remote_path: /etc/docker/daemon.json
+    docker_daemon_asset_path: "{{ playbook_dir }}/../roles/docker_daemon/files/{{ inventory_hostname }}/daemon.json"
+    docker_daemon_manifest_path: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/docker_daemon.yml"
+  tasks:
+    - name: Inspect Docker daemon configuration
+      ansible.builtin.stat:
+        path: "{{ docker_daemon_remote_path }}"
+        checksum_algorithm: sha256
+      register: docker_daemon_remote_stat
+    - name: Require a regular daemon.json
+      ansible.builtin.assert:
+        that:
+          - docker_daemon_remote_stat.stat.isreg | default(false)
+        fail_msg: "{{ docker_daemon_remote_path }} does not exist as a regular file on {{ inventory_hostname }}."
+    - name: Create Docker daemon asset directory on controller
+      ansible.builtin.file:
+        path: "{{ docker_daemon_asset_path | dirname }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+    - name: Fetch daemon.json byte-for-byte
+      ansible.builtin.fetch:
+        src: "{{ docker_daemon_remote_path }}"
+        dest: "{{ docker_daemon_asset_path }}"
+        flat: true
+        validate_checksum: true
+    - name: Verify imported daemon.json SHA-256
+      ansible.builtin.stat:
+        path: "{{ docker_daemon_asset_path }}"
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      become: false
+      register: docker_daemon_local_stat
+    - name: Require identical local and remote daemon.json
+      ansible.builtin.assert:
+        that:
+          - docker_daemon_local_stat.stat.checksum == docker_daemon_remote_stat.stat.checksum
+        fail_msg: No manifest was written because daemon.json changed during import.
+    - name: Write Docker daemon review manifest
+      ansible.builtin.copy:
+        dest: "{{ docker_daemon_manifest_path }}"
+        mode: "0644"
+        content: |
+          ---
+          # Imported from {{ inventory_hostname }}; review daemon.json before enabling management.
+          docker_daemon_config_import_reviewed: false
+          docker_daemon_config_sha256: "{{ docker_daemon_remote_stat.stat.checksum }}"
+          docker_daemon_config_owner: "{{ docker_daemon_remote_stat.stat.pw_name }}"
+          docker_daemon_config_group: "{{ docker_daemon_remote_stat.stat.gr_name }}"
+          docker_daemon_config_mode: "{{ docker_daemon_remote_stat.stat.mode }}"
+      delegate_to: localhost
+      become: false

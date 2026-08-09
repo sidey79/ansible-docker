@@ -1,0 +1,13 @@
+# file named: avahi-alias@proxy
+[Unit]
+Description=Publish %I on reverseproxy named %J.local
+After=avahi-daemon.service
+Requires=avahi-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c "/usr/bin/avahi-publish --address --no-reverse %I $(avahi-resolve -4 -n %J.local | cut -f 2)"
+
+[Install]
+WantedBy=multi-user.target
+

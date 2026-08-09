@@ -1,0 +1,18 @@
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "5" 
+  },
+ "ipv6": true,
+ "experimental": true,
+ "ip6tables": true,
+ "fixed-cidr-v6": "fd00:10:2:121::/64",
+ "dns": ["10.2.11.1" ],
+ "default-address-pools": [
+   {
+     "base": "172.20.0.0/16",
+     "size": 26
+   }
+ ]
+}

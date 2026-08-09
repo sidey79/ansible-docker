@@ -41,6 +41,16 @@
     state: directory
     mode: "0700"
 
+- name: Inspect SSH directories for check-mode safety
+  ansible.builtin.stat:
+    path: "{{ ssh_client_home }}/.ssh"
+  register: ssh_client_ssh_directory
+
+- name: Inspect SSH config directory for check-mode safety
+  ansible.builtin.stat:
+    path: "{{ ssh_client_home }}/.ssh/config.d"
+  register: ssh_client_config_directory
+
 - name: Include Ansible-managed SSH client configuration
   ansible.builtin.blockinfile:
     path: "{{ ssh_client_home }}/.ssh/config"
@@ -49,12 +59,17 @@
     marker: "# {mark} ANSIBLE MANAGED SSH CLIENT INCLUDE"
     block: "Include ~/.ssh/config.d/ansible.conf"
     mode: "0600"
+  when:
+    - ssh_client_ssh_directory.stat.exists
 
 - name: Render Ansible-managed SSH client configuration
   ansible.builtin.template:
     src: ansible.conf.j2
     dest: "{{ ssh_client_home }}/.ssh/config.d/ansible.conf"
     mode: "0600"
+  when:
+    - ssh_client_ssh_directory.stat.exists
+    - ssh_client_config_directory.stat.exists
 
 - name: Install managed private SSH keys
   ansible.builtin.copy:
@@ -64,7 +79,9 @@
   loop: "{{ ssh_client_private_keys }}"
   loop_control:
     label: "managed private key"
-  when: item.state | default('present') == 'present'
+  when:
+    - item.state | default('present') == 'present'
+    - ssh_client_ssh_directory.stat.exists
   diff: false
   no_log: true
 

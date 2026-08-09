@@ -120,7 +120,7 @@ Die Rolle verändert vorhandene manuelle Host-Einträge nicht. Sie ergänzt am A
 Prüfe zuerst die Erreichbarkeit und danach den geplanten Diff:
 
 ```bash
-docker compose exec ansible ansible -i inventory/hosts.ini -i inventory/wsl.local.ini ssh_clients -m ansible.builtin.ping
+docker compose exec ansible ansible -i inventory/hosts.ini -i inventory/wsl.local.ini ssh_clients -m ansible.builtin.ping --vault-password-file .vault_pass
 docker compose exec ansible ansible-playbook -i inventory/hosts.ini -i inventory/wsl.local.ini playbooks/ssh_clients.yml --syntax-check
 docker compose exec ansible ansible-playbook -i inventory/hosts.ini -i inventory/wsl.local.ini playbooks/ssh_clients.yml --check --diff --vault-password-file .vault_pass
 ```

@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: ansible-docker
+    network_mode: host
     working_dir: /workspace
     command: ["sleep", "infinity"]
     volumes:

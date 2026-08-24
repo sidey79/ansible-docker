@@ -3,7 +3,10 @@
 ua-netinst/
 keys/*
 !keys/ansible_ed25519.pub
+!keys/s26.pub
+!keys/bienchen.pub
 *.local
 
 
 .vault_pass
+inventory/wsl.local.ini

@@ -1,0 +1,4 @@
+---
+ssh_authorized_key_files:
+  - "keys/s26.pub"
+  - "keys/bienchen.pub"

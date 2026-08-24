@@ -1,0 +1,5 @@
+---
+# Copy this file to vault.yml, replace the placeholder, and encrypt it with:
+# ansible-vault encrypt inventory/host_vars/sf8008/vault.yml --vault-password-file .vault_pass
+vault_sf8008_root_password_hash: >-
+  REPLACE_WITH_A_SHA512_PASSWORD_HASH

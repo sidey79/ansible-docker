@@ -1,0 +1,13 @@
+---
+ansible_user: root
+
+# openATV factory state: root SSH authentication accepts an empty password.
+ansible_password: ""
+# Network interface MAC address for Wake-on-LAN.
+sf8008_mac: "D0:27:24:00:D0:45"
+
+# The password hash is kept in the host vault, never in the inventory.
+sf8008_root_password_hash: "{{ vault_sf8008_root_password_hash }}"
+
+# Root SSH access is expected to be bootstrapped through the console or another temporary key.
+ssh_authorized_key_user: root

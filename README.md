@@ -80,9 +80,9 @@ dieses Playbooks.
 Vorschau und Ausführung:
 
 ```bash
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --syntax-check --vault-password-file .vault_pass
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --check --diff --vault-password-file .vault_pass
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --limit 'ssh_key_targets:!sf8008' --syntax-check --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --limit 'ssh_key_targets:!sf8008' --check --diff --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --limit 'ssh_key_targets:!sf8008' --vault-password-file .vault_pass
 ```
 
 ### sf8008 vorbereiten
@@ -105,8 +105,10 @@ docker compose exec ansible ansible localhost -c local \
 
 ```bash
 cp inventory/host_vars/sf8008/vault.yml.example inventory/host_vars/sf8008/vault.yml
-docker compose exec ansible ansible localhost -m ansible.builtin.debug \
-  -a 'msg={{ "MEIN_PASSWORT" | password_hash("sha512") }}'
+read -r -s -p "sf8008 root password: " SF8008_ROOT_PASSWORD
+printf "\n"
+printf "%s\n" "$SF8008_ROOT_PASSWORD" | docker compose exec -T ansible python -c "import sys; from passlib.hash import sha512_crypt; print(sha512_crypt.hash(sys.stdin.read().rstrip(chr(10))))"
+unset SF8008_ROOT_PASSWORD
 docker compose exec ansible ansible-vault encrypt inventory/host_vars/sf8008/vault.yml \
   --vault-password-file .vault_pass
 ```

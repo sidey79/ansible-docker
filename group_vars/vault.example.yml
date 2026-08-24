@@ -14,3 +14,8 @@ vault_ssh_client_private_keys:
   example_key: !vault |
     $ANSIBLE_VAULT;1.1;AES256
     replace-with-ansible-vault-encrypted-private-key
+
+# The value must be a SHA-512 crypt password hash, encrypted with ansible-vault.
+vault_sf8008_root_password_hash: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  replace-with-ansible-vault-encrypted-password-hash

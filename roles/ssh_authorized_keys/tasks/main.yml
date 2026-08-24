@@ -1,0 +1,10 @@
+---
+- name: Install authorized SSH keys
+  ansible.posix.authorized_key:
+    user: "{{ ssh_authorized_key_user }}"
+    key: "{{ lookup('ansible.builtin.file', item) }}"
+    state: present
+    manage_dir: true
+  loop: "{{ ssh_authorized_key_files }}"
+  loop_control:
+    label: "{{ item }} -> {{ ssh_authorized_key_user }}"

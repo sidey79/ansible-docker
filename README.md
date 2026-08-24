@@ -70,6 +70,58 @@ Der Test-Zielhost heißt `targetpi` und ist im Compose-Netz nur intern erreichba
 
 Der private Key wird nach `/root/.ssh/id_ed25519` gemountet und in `ansible.cfg` als Standard-Key eingetragen.
 
+## Öffentliche SSH-Schlüssel auf Zielsystemen
+
+Die öffentlichen Schlüssel `keys/s26.pub` und `keys/bienchen.pub` werden mit
+`playbooks/ssh_authorized_keys.yml` auf den Benutzer `pi` von `pi3` sowie auf
+den Benutzer `sven` von `zeus` und `thor` sowie für `root` von `sf8008` installiert. `svnfhem` ist kein Ziel
+dieses Playbooks.
+
+Vorschau und Ausführung:
+
+```bash
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --syntax-check
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --check --diff
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml
+```
+
+### sf8008 vorbereiten
+
+Wenn der Receiver ausgeschaltet ist, muss er vor dem SSH-Zugriff per Wake-on-LAN aufgeweckt werden. Der Ansible-Container verwendet dafür das Host-Netzwerk:
+
+```bash
+docker compose exec ansible ansible localhost -c local \
+    -m community.general.wakeonlan \
+    -a 'mac=D0:27:24:00:D0:45 broadcast=192.168.1.255'
+
+docker compose exec ansible ansible localhost -c local \
+    -m ansible.builtin.wait_for \
+    -a 'host=sf8008 port=22 timeout=120 sleep=5'
+```
+
+`192.168.1.255` muss bei Bedarf durch die Broadcast-Adresse des lokalen Netzwerks ersetzt werden.
+
+`sf8008` wird als `root` verwaltet. Die vorhandenen öffentlichen Schlüssel sowie der öffentliche Schlüssel des Ansible-Containers werden ebenfalls für `root` installiert. Das Root-Passwort wird als SHA-512-Hash in `inventory/host_vars/sf8008/vault.yml` hinterlegt und darf nicht im Klartext ins Repository gelangen:
+
+```bash
+cp inventory/host_vars/sf8008/vault.yml.example inventory/host_vars/sf8008/vault.yml
+docker compose exec ansible ansible localhost -m ansible.builtin.debug \\
+  -a 'msg={{ "MEIN_PASSWORT" | password_hash("sha512") }}'
+docker compose exec ansible ansible-vault encrypt inventory/host_vars/sf8008/vault.yml \\
+  --vault-password-file .vault_pass
+```
+
+Den ausgegebenen Hash trägst du anstelle des Platzhalters in `vault.yml` ein, bevor du verschlüsselst. Für den ersten Lauf muss Root bereits per SSH-Key, Konsole oder einem temporären Zugang erreichbar sein, da auf dem ausgelieferten Gerät noch kein Passwort zur SSH-Anmeldung existiert:
+
+```bash
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini \\
+  playbooks/ssh_authorized_keys.yml --limit sf8008 \\
+  --check --diff --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini \\
+  playbooks/ssh_authorized_keys.yml --limit sf8008 \\
+  --vault-password-file .vault_pass
+```
+
 ## SSH-Client in WSL verwalten
 
 Voraussetzung ist ein bereits laufender SSH-Server in WSL. Windows muss einen stabilen Port an diesen Server weiterleiten; die Weiterleitung selbst wird nicht durch dieses Repository verwaltet.

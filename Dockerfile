@@ -12,8 +12,12 @@ RUN apt-get update \
        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "ansible-core>=2.19,<2.20" "passlib>=1.7.4" \
-    && ansible-galaxy collection install ansible.posix community.general
+RUN pip install --no-cache-dir "ansible-core>=2.19,<2.20" "passlib>=1.7.4"
+
+COPY requirements.yml /tmp/requirements.yml
+
+RUN ansible-galaxy collection install -r /tmp/requirements.yml \
+    && rm -f /tmp/requirements.yml
 
 RUN mkdir -p /root/.ssh /workspace
 

@@ -58,13 +58,13 @@ Das Playbook schreibt keine Änderungen und zeigt die Abweichungen der verwaltet
 Für einen rudimentären Test gibt es einen zweiten Container mit SSH und Samba. Damit kannst du Login, CIFS-Mount und `ser2net` gegen einen echten Zielhost im Compose-Netz prüfen.
 
 ```bash
-docker compose --profile test up -d --build
-docker compose exec ansible ansible-inventory -i inventory/test-hosts.ini --graph
-docker compose exec ansible ansible-playbook -i inventory/test-hosts.ini playbooks/site.yml --check --diff --vault-password-file .vault_pass
-docker compose exec ansible ansible-playbook -i inventory/test-hosts.ini playbooks/site.yml --vault-password-file .vault_pass
+docker compose -f docker-compose.yml -f docker-compose.test.yml --profile test up -d --build
+docker compose -f docker-compose.yml -f docker-compose.test.yml exec ansible ansible-inventory -i inventory/test-hosts.ini --graph
+docker compose -f docker-compose.yml -f docker-compose.test.yml exec ansible ansible-playbook -i inventory/test-hosts.ini playbooks/site.yml --check --diff --vault-password-file .vault_pass
+docker compose -f docker-compose.yml -f docker-compose.test.yml exec ansible ansible-playbook -i inventory/test-hosts.ini playbooks/site.yml --vault-password-file .vault_pass
 ```
 
-Der Test-Zielhost heißt `targetpi` und ist im Compose-Netz nur intern erreichbar. SSH läuft mit dem vorhandenen Ansible-Key.
+Der Test-Zielhost heißt `targetpi`. Der Test-Override veröffentlicht SSH auf `127.0.0.1:2224`, damit der Ansible-Container im Host-Netzwerk ihn erreicht. SSH läuft mit dem vorhandenen Ansible-Key.
 
 ## SSH-Key im Container
 

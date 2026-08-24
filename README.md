@@ -80,9 +80,9 @@ dieses Playbooks.
 Vorschau und Ausführung:
 
 ```bash
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --syntax-check
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --check --diff
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --syntax-check --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --check --diff --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/ssh_authorized_keys.yml --vault-password-file .vault_pass
 ```
 
 ### sf8008 vorbereiten
@@ -105,20 +105,20 @@ docker compose exec ansible ansible localhost -c local \
 
 ```bash
 cp inventory/host_vars/sf8008/vault.yml.example inventory/host_vars/sf8008/vault.yml
-docker compose exec ansible ansible localhost -m ansible.builtin.debug \\
+docker compose exec ansible ansible localhost -m ansible.builtin.debug \
   -a 'msg={{ "MEIN_PASSWORT" | password_hash("sha512") }}'
-docker compose exec ansible ansible-vault encrypt inventory/host_vars/sf8008/vault.yml \\
+docker compose exec ansible ansible-vault encrypt inventory/host_vars/sf8008/vault.yml \
   --vault-password-file .vault_pass
 ```
 
 Den ausgegebenen Hash trägst du anstelle des Platzhalters in `vault.yml` ein, bevor du verschlüsselst. Für den ersten Lauf muss Root bereits per SSH-Key, Konsole oder einem temporären Zugang erreichbar sein, da auf dem ausgelieferten Gerät noch kein Passwort zur SSH-Anmeldung existiert:
 
 ```bash
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini \\
-  playbooks/ssh_authorized_keys.yml --limit sf8008 \\
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini \
+  playbooks/ssh_authorized_keys.yml --limit sf8008 \
   --check --diff --vault-password-file .vault_pass
-docker compose exec ansible ansible-playbook -i inventory/hosts.ini \\
-  playbooks/ssh_authorized_keys.yml --limit sf8008 \\
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini \
+  playbooks/ssh_authorized_keys.yml --limit sf8008 \
   --vault-password-file .vault_pass
 ```
 

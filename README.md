@@ -68,7 +68,11 @@ Der Test-Zielhost heißt `targetpi`. Der Test-Override veröffentlicht SSH auf `
 
 ## SSH-Key im Container
 
-Der private Key wird nach `/root/.ssh/id_ed25519` gemountet und in `ansible.cfg` als Standard-Key eingetragen.
+Der Container läuft als unprivilegierter Benutzer `ansible` (UID/GID 1000), damit Dateien,
+die Ansible in das eingebundene Repository schreibt (z. B. via `fetch` importierte Assets),
+auf dem Host dem aufrufenden Benutzer gehören und nicht `root`.
+
+Der private Key wird nach `/home/ansible/.ssh/id_ed25519` gemountet und in `ansible.cfg` als Standard-Key eingetragen.
 
 ## Öffentliche SSH-Schlüssel auf Zielsystemen
 

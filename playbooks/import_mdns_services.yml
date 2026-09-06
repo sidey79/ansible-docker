@@ -140,20 +140,6 @@
         checksum_algorithm: sha256
       loop: "{{ avahi_alias_entries.files }}"
       register: avahi_alias_remote_stats
-    - name: Query Avahi alias enablement
-      ansible.builtin.command:
-        argv: [systemctl, is-enabled, "{{ item.stat.path | basename }}"]
-      loop: "{{ avahi_alias_remote_stats.results }}"
-      register: avahi_alias_enabled
-      changed_when: false
-      failed_when: false
-    - name: Query Avahi alias active state
-      ansible.builtin.command:
-        argv: [systemctl, is-active, "{{ item.stat.path | basename }}"]
-      loop: "{{ avahi_alias_remote_stats.results }}"
-      register: avahi_alias_active
-      changed_when: false
-      failed_when: false
     - name: Create controller asset directory for Avahi alias units
       ansible.builtin.file:
         path: "{{ avahi_alias_assets_directory }}"
@@ -168,10 +154,51 @@
         flat: true
         validate_checksum: true
       loop: "{{ avahi_alias_remote_stats.results }}"
+    # Deliberately built under an import-only fact name. Reusing avahi_alias_units
+    # here would seed the list from the previously generated host_vars file and
+    # append to it on every run, duplicating every entry.
     - name: Build Avahi alias unit manifest data
       ansible.builtin.set_fact:
-        avahi_alias_units: "{{ (avahi_alias_units | default([])) + [ {'name': (item.stat.path | basename), 'owner': item.stat.pw_name, 'group': item.stat.gr_name, 'mode': item.stat.mode, 'sha256': item.stat.checksum, 'enabled': (avahi_alias_enabled.results[ansible_loop.index0].rc == 0), 'state': ('started' if avahi_alias_active.results[ansible_loop.index0].rc == 0 else 'stopped')} ] }}"
+        mdns_import_alias_units: "{{ (mdns_import_alias_units | default([])) + [ {'name': (item.stat.path | basename), 'owner': item.stat.pw_name, 'group': item.stat.gr_name, 'mode': item.stat.mode, 'sha256': item.stat.checksum} ] }}"
       loop: "{{ avahi_alias_remote_stats.results }}"
+    # Instances exist only as .wants symlinks and as loaded systemd units, so a
+    # non-recursive find over /etc/systemd/system never sees them.
+    - name: Discover instantiated Avahi alias units
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          {
+            systemctl list-units --all --plain --no-legend 'avahi-alias-*@*.service' \
+              | awk '{print $1}'
+            find {{ avahi_alias_units_directory | quote }} -name 'avahi-alias-*@*.service' -printf '%f\n'
+          } | sed '/^$/d' | grep -v '@\.service$' | sort -u || true
+        executable: /bin/bash
+      register: avahi_alias_instance_names
+      changed_when: false
+    - name: Refuse unsafe Avahi alias instance names
+      ansible.builtin.assert:
+        that:
+          - item is match('^avahi-alias-[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.service$')
+        fail_msg: "Refusing unexpected Avahi alias instance name {{ item }}."
+      loop: "{{ avahi_alias_instance_names.stdout_lines }}"
+    - name: Query Avahi alias instance enablement
+      ansible.builtin.command:
+        argv: [systemctl, is-enabled, "{{ item }}"]
+      loop: "{{ avahi_alias_instance_names.stdout_lines }}"
+      register: avahi_alias_enabled
+      changed_when: false
+      failed_when: false
+    - name: Query Avahi alias instance active state
+      ansible.builtin.command:
+        argv: [systemctl, is-active, "{{ item }}"]
+      loop: "{{ avahi_alias_instance_names.stdout_lines }}"
+      register: avahi_alias_active
+      changed_when: false
+      failed_when: false
+    - name: Build Avahi alias instance manifest data
+      ansible.builtin.set_fact:
+        mdns_import_alias_instances: "{{ (mdns_import_alias_instances | default([])) + [ {'name': item, 'enabled': (avahi_alias_enabled.results[ansible_loop.index0].rc == 0), 'state': ('started' if avahi_alias_active.results[ansible_loop.index0].rc == 0 else 'stopped')} ] }}"
+      loop: "{{ avahi_alias_instance_names.stdout_lines }}"
       loop_control:
         extended: true
     - name: Write final unreviewed manifest including Avahi alias units

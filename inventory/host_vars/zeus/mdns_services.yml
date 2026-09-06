@@ -29,6 +29,9 @@ avahi_alias_instances:
   - name: avahi-alias-Caddy@n8n.local.service
     enabled: true
     state: started
+  - name: avahi-alias-Caddy@paperless.local.service
+    enabled: true
+    state: started
   - name: avahi-alias-zeus@duplicati.local.service
     enabled: true
     state: started

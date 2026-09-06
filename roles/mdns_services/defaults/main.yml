@@ -5,5 +5,11 @@ mdns_services_daemon: avahi-daemon
 mdns_services: []
 mdns_services_authoritative: true
 avahi_alias_units_directory: /etc/systemd/system
+# Unit files deployed to the host. Template units (name ending in "@.service")
+# are only installed here; their runtime state is driven by avahi_alias_instances.
 avahi_alias_units: []
 avahi_alias_units_authoritative: true
+# Instantiated units, e.g. avahi-alias-Caddy@bitwarden.local.service. The part
+# before "@" selects the template (and thus the host whose address is published
+# via %j), the instance name is the .local name being announced.
+avahi_alias_instances: []

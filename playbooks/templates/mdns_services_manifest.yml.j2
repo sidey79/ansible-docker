@@ -6,8 +6,13 @@ mdns_services_import_reviewed: false
 mdns_services_authoritative: false
 mdns_services:
 {{ mdns_import_services | default([]) | to_nice_yaml(indent=2) | indent(2, true) }}
+# Unit files only; template units are instantiated via avahi_alias_instances.
 avahi_alias_units:
-{{ avahi_alias_units | default([]) | to_nice_yaml(indent=2) | indent(2, true) }}
+{{ mdns_import_alias_units | default([]) | to_nice_yaml(indent=2) | indent(2, true) }}
+# Instantiated units: the name after "@" is the .local name being published,
+# the template prefix selects the host whose address it resolves to.
+avahi_alias_instances:
+{{ mdns_import_alias_instances | default([]) | to_nice_yaml(indent=2) | indent(2, true) }}
 mdns_services_import_report:
   imported_at_utc: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
   avahi_daemon_package:

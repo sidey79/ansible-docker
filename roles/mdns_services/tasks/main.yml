@@ -81,6 +81,7 @@
     - (item.path | basename) not in (mdns_services | map(attribute='name') | list)
   notify: Reload avahi-daemon
 
+
 - name: Validate Avahi alias unit manifest
   ansible.builtin.assert:
     that:
@@ -92,16 +93,43 @@
 - name: Validate Avahi alias unit entries
   ansible.builtin.assert:
     that:
+      - item is mapping
       - item.name is defined
       - item.name is match('^avahi-alias-[A-Za-z0-9@._-]+\.service$')
       - item.owner is defined
       - item.group is defined
       - item.mode is defined
+      - (item.mode | string) is match('^[0-7]{3,4}$')
+      - item.sha256 is defined
+      - item.sha256 is match('^[a-fA-F0-9]{64}$')
+    fail_msg: "Invalid Avahi alias unit manifest entry: {{ item | to_nice_json }}"
+  loop: "{{ avahi_alias_units }}"
+  loop_control:
+    label: "{{ item.name | default('missing name') }}"
+
+- name: Validate Avahi alias instance manifest
+  ansible.builtin.assert:
+    that:
+      - avahi_alias_instances is sequence
+      - avahi_alias_instances is not string
+      - (avahi_alias_instances | map(attribute='name') | list | unique | length) == (avahi_alias_instances | length)
+    fail_msg: avahi_alias_instances must be a list with unique systemd unit names.
+
+- name: Validate Avahi alias instance entries
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.name is defined
+      - item.name is match('^avahi-alias-[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.service$')
       - item.enabled is defined
       - item.state is defined
       - item.state in ['started', 'stopped']
-    fail_msg: "Invalid Avahi alias unit manifest entry: {{ item | to_nice_json }}"
-  loop: "{{ avahi_alias_units }}"
+      - (item.name.split('@')[0] ~ '@.service') in (avahi_alias_units | map(attribute='name') | list)
+        or item.name in (avahi_alias_units | map(attribute='name') | list)
+    fail_msg: >-
+      Invalid Avahi alias instance entry (or its template unit is missing from
+      avahi_alias_units): {{ item | to_nice_json }}
+  loop: "{{ avahi_alias_instances }}"
   loop_control:
     label: "{{ item.name | default('missing name') }}"
 
@@ -117,14 +145,14 @@
     label: "{{ item.name }}"
   notify: Reload systemd daemon
 
-- name: Reload systemd before applying Avahi alias unit states
+- name: Reload systemd before applying Avahi alias instance states
   ansible.builtin.meta: flush_handlers
 
-- name: Enable and start managed Avahi alias units
+- name: Enable and start managed Avahi alias instances
   ansible.builtin.systemd_service:
     name: "{{ item.name }}"
     enabled: "{{ item.enabled | bool }}"
     state: "{{ item.state }}"
-  loop: "{{ avahi_alias_units }}"
+  loop: "{{ avahi_alias_instances }}"
   loop_control:
     label: "{{ item.name }}"

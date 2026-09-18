@@ -189,3 +189,45 @@ Danach kannst du die Konfiguration ausrollen. Ein unmittelbar anschließender zw
 docker compose exec ansible ansible-playbook -i inventory/hosts.ini -i inventory/wsl.local.ini playbooks/ssh_clients.yml --vault-password-file .vault_pass
 ```
 
+
+## AppArmor-Profile auf zeus
+
+Ubuntu 24.04 schränkt unprivilegierte User-Namespaces ein
+(`kernel.apparmor_restrict_unprivileged_userns = 1`). Dadurch startet
+`rootlesskit` und damit rootless Docker nicht. Statt die Einschränkung
+systemweit abzuschalten, erlaubt ein AppArmor-Profil genau diesem Binary die
+`userns`-Capability.
+
+Die Rolle `apparmor_profiles` rollt Profildateien aus
+`roles/apparmor_profiles/files/<host>/` nach `/etc/apparmor.d/` aus. Welche
+Profile ein Host bekommt, steht in seinem Manifest, z. B. in
+`inventory/host_vars/zeus/apparmor_profiles.yml`:
+
+```yaml
+apparmor_profiles:
+  - name: usr.local.bin.rootlesskit
+```
+
+Der Name ist zugleich der Dateiname im Repository und in `/etc/apparmor.d`.
+`owner`, `group` und `mode` sind optional und fallen sonst auf `root`, `root`
+und `0644` zurück. Vor dem Schreiben prüft `apparmor_parser --skip-kernel-load
+--skip-cache` die Datei, danach lädt ein Handler die Profile per
+`systemctl reload apparmor` neu.
+
+`zeus` verlangt für `sudo` ein Passwort, deshalb braucht jeder Lauf
+`--ask-become-pass`. Der Prompt funktioniert nur in einem echten Terminal; ohne
+TTY liest `getpass` nichts ein und der Lauf scheitert mit
+`Missing sudo password`:
+
+```bash
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/apparmor.yml --limit zeus --syntax-check
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/apparmor.yml --limit zeus --check --diff --ask-become-pass --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/apparmor.yml --limit zeus --ask-become-pass --vault-password-file .vault_pass
+```
+
+Ein unmittelbar anschließender zweiter Lauf muss `changed=0` melden. Das Profil
+darf auch installiert werden, bevor `/usr/local/bin/rootlesskit` existiert; es
+greift erst, wenn das Binary gestartet wird. Nach einem nachträglichen Wechsel
+auf rootless Docker muss der Benutzerdienst einmal neu gestartet werden
+(`systemctl --user restart docker`), damit der neue Prozess unter dem Profil
+läuft.

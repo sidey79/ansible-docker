@@ -1,0 +1,5 @@
+---
+- name: Reload AppArmor profiles
+  ansible.builtin.systemd_service:
+    name: apparmor
+    state: reloaded

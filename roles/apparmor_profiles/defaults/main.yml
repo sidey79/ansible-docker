@@ -1,0 +1,11 @@
+---
+apparmor_profiles_directory: /etc/apparmor.d
+apparmor_profiles_package: apparmor
+# Defaults for manifest entries that do not set them explicitly.
+apparmor_profiles_owner: root
+apparmor_profiles_group: root
+apparmor_profiles_mode: "0644"
+# Profiles deployed to the host. Each name is both the file name below
+# roles/apparmor_profiles/files/<inventory_hostname>/ and the file name in
+# apparmor_profiles_directory.
+apparmor_profiles: []

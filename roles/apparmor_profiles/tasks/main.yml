@@ -1,0 +1,47 @@
+---
+- name: Validate AppArmor profile manifest
+  ansible.builtin.assert:
+    that:
+      - apparmor_profiles is sequence
+      - apparmor_profiles is not string
+      - (apparmor_profiles | map(attribute='name') | list | unique | length) == (apparmor_profiles | length)
+    fail_msg: apparmor_profiles must be a list with unique profile file names.
+
+- name: Validate AppArmor profile manifest entries
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.name is defined
+      - item.name is match('^(?!\.{1,2}$)[^/]+$')
+      - item.name is match('^[A-Za-z0-9][A-Za-z0-9._-]*$')
+      - (item.mode | default(apparmor_profiles_mode) | string) is match('^[0-7]{3,4}$')
+    fail_msg: "Invalid AppArmor profile manifest entry: {{ item | to_nice_json }}"
+  loop: "{{ apparmor_profiles }}"
+  loop_control:
+    label: "{{ item.name | default('missing name') }}"
+
+- name: Ensure AppArmor package is present
+  ansible.builtin.package:
+    name: "{{ apparmor_profiles_package }}"
+    state: present
+
+- name: Ensure AppArmor profile directory exists
+  ansible.builtin.file:
+    path: "{{ apparmor_profiles_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install managed AppArmor profiles
+  ansible.builtin.copy:
+    src: "{{ inventory_hostname }}/{{ item.name }}"
+    dest: "{{ apparmor_profiles_directory }}/{{ item.name }}"
+    owner: "{{ item.owner | default(apparmor_profiles_owner) }}"
+    group: "{{ item.group | default(apparmor_profiles_group) }}"
+    mode: "{{ item.mode | default(apparmor_profiles_mode) }}"
+    validate: "apparmor_parser --skip-kernel-load --skip-cache %s"
+  loop: "{{ apparmor_profiles }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload AppArmor profiles

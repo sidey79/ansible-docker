@@ -1,0 +1,7 @@
+---
+# AppArmor profiles managed on zeus. Ubuntu 24.04 restricts unprivileged user
+# namespaces (kernel.apparmor_restrict_unprivileged_userns), which blocks
+# rootlesskit and therefore rootless Docker. The profile grants that one binary
+# the userns capability instead of disabling the restriction host-wide.
+apparmor_profiles:
+  - name: usr.local.bin.rootlesskit

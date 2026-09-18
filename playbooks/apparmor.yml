@@ -1,0 +1,7 @@
+---
+- name: Manage AppArmor profiles
+  hosts: apparmor_hosts
+  become: true
+  gather_facts: false
+  roles:
+    - apparmor_profiles

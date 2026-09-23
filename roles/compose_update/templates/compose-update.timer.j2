@@ -1,0 +1,11 @@
+# Managed by Ansible (roles/compose_update). Local changes will be overwritten.
+[Unit]
+Description=Scheduled update of the {{ item.name }} Docker Compose project
+
+[Timer]
+OnCalendar={{ item.on_calendar | default(compose_update_on_calendar) }}
+RandomizedDelaySec={{ item.randomized_delay | default(compose_update_randomized_delay) }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

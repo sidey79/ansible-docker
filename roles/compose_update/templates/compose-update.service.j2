@@ -1,0 +1,19 @@
+# Managed by Ansible (roles/compose_update). Local changes will be overwritten.
+[Unit]
+Description=Update the {{ item.name }} Docker Compose project
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User={{ item.user }}
+{% if item.group is defined %}
+Group={{ item.group }}
+{% endif %}
+WorkingDirectory={{ item.directory }}
+{% if item.git_pull | default(compose_update_git_pull) | bool %}
+ExecStart={{ compose_update_git_binary }} pull --ff-only
+{% endif %}
+ExecStart={{ compose_update_docker_binary }} compose pull
+ExecStart={{ compose_update_docker_binary }} compose up -d

@@ -1,0 +1,7 @@
+---
+- name: Manage scheduled Docker Compose updates
+  hosts: compose_update_hosts
+  become: true
+  gather_facts: false
+  roles:
+    - compose_update

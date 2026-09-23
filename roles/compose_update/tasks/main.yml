@@ -1,0 +1,82 @@
+---
+- name: Validate Compose update job manifest
+  ansible.builtin.assert:
+    that:
+      - compose_update_jobs is sequence
+      - compose_update_jobs is not string
+      - (compose_update_jobs | map(attribute='name') | list | unique | length) == (compose_update_jobs | length)
+    fail_msg: compose_update_jobs must be a list with unique job names.
+
+- name: Validate Compose update job entries
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.name is defined
+      - item.name is match('^[A-Za-z0-9][A-Za-z0-9._-]*$')
+      - item.directory is defined
+      - item.directory is match('^/')
+      - item.user is defined
+      - item.user is match('^[a-z_][a-z0-9_-]*$')
+    fail_msg: "Invalid Compose update job entry: {{ item | to_nice_json }}"
+  loop: "{{ compose_update_jobs }}"
+  loop_control:
+    label: "{{ item.name | default('missing name') }}"
+
+- name: Inspect Compose project directories
+  ansible.builtin.stat:
+    path: "{{ item.directory }}"
+  loop: "{{ compose_update_jobs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: compose_update_directories
+
+- name: Require existing Compose project directories
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isdir
+    fail_msg: >-
+      {{ item.item.directory }} is not a directory on this host, so the
+      {{ item.item.name }} timer would fail on every run.
+  loop: "{{ compose_update_directories.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: Install Compose update services
+  ansible.builtin.template:
+    src: compose-update.service.j2
+    dest: "{{ compose_update_units_directory }}/{{ compose_update_unit_prefix }}-{{ item.name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ compose_update_jobs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload systemd daemon
+
+- name: Install Compose update timers
+  ansible.builtin.template:
+    src: compose-update.timer.j2
+    dest: "{{ compose_update_units_directory }}/{{ compose_update_unit_prefix }}-{{ item.name }}.timer"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ compose_update_jobs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload systemd daemon
+
+- name: Reload systemd before applying timer states
+  ansible.builtin.meta: flush_handlers
+
+# Skipped in check mode: the unit files are not written there, so systemd
+# cannot resolve the timer the task would enable.
+- name: Enable and start Compose update timers
+  ansible.builtin.systemd_service:
+    name: "{{ compose_update_unit_prefix }}-{{ item.name }}.timer"
+    enabled: true
+    state: started
+  loop: "{{ compose_update_jobs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not ansible_check_mode

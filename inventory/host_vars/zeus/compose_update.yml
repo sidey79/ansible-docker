@@ -1,0 +1,11 @@
+---
+# Compose projects that get a weekly image update on zeus. The jobs run as
+# sven, who is in the docker group, so they need no sudo for Docker itself.
+# git_pull keeps the checked-in compose file in sync before the images are
+# pulled; it uses --ff-only and therefore fails loudly on local commits.
+compose_update_jobs:
+  - name: docker-portainer-cfg
+    directory: /home/sven/git_repos/docker-portainer-cfg
+    user: sven
+    git_pull: true
+    on_calendar: "Sat *-*-* 03:00:00"

@@ -231,3 +231,49 @@ greift erst, wenn das Binary gestartet wird. Nach einem nachträglichen Wechsel
 auf rootless Docker muss der Benutzerdienst einmal neu gestartet werden
 (`systemctl --user restart docker`), damit der neue Prozess unter dem Profil
 läuft.
+
+## Wöchentliche Compose-Updates auf zeus
+
+Die Rolle `compose_update` legt pro Compose-Projekt eine systemd-Service- und
+eine Timer-Unit unter `/etc/systemd/system/` an und aktiviert den Timer. Der
+Service ist ein `Type=oneshot` und führt der Reihe nach `git pull --ff-only`
+(optional), `docker compose pull` und `docker compose up -d` im Projektordner
+aus.
+
+Welche Projekte ein Host bekommt, steht in seinem Manifest, z. B. in
+`inventory/host_vars/zeus/compose_update.yml`:
+
+```yaml
+compose_update_jobs:
+  - name: docker-portainer-cfg
+    directory: /home/sven/git_repos/docker-portainer-cfg
+    user: sven
+    git_pull: true
+    on_calendar: "Sat *-*-* 03:00:00"
+```
+
+`name`, `directory` und `user` sind Pflicht, die Rolle prüft sie per `assert`
+und bricht ab, wenn `directory` auf dem Host kein Verzeichnis ist. `git_pull`,
+`on_calendar` und `randomized_delay` fallen sonst auf die Werte in
+`roles/compose_update/defaults/main.yml` zurück. Aus `name` entstehen die Units
+`compose-update-<name>.service` und `compose-update-<name>.timer`.
+
+Der Job läuft als `sven`. Der Benutzer ist auf zeus in der Gruppe `docker`, der
+Service braucht für Docker also kein sudo. `git pull --ff-only` scheitert
+absichtlich, wenn im Projektordner lokale Commits oder Änderungen liegen —
+dann soll niemand ungefragt darüber hinweggehen.
+
+```bash
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/compose_update.yml --limit zeus --syntax-check
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/compose_update.yml --limit zeus --check --diff --ask-become-pass --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/compose_update.yml --limit zeus --ask-become-pass --vault-password-file .vault_pass
+```
+
+`--ask-become-pass` braucht ein echtes Terminal. Im `--check`-Lauf wird das
+Aktivieren der Timer übersprungen, weil dort keine Unit-Dateien geschrieben
+werden und systemd den Timer folglich nicht auflösen kann; der Dry-Run zeigt
+also nur den Diff der Units. Nach dem Rollout zeigt
+`systemctl list-timers 'compose-update-*'` den nächsten Lauf, ein manueller
+Test geht mit `sudo systemctl start compose-update-docker-portainer-cfg.service`
+und das Ergebnis steht in
+`journalctl -u compose-update-docker-portainer-cfg.service`.

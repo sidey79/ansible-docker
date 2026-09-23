@@ -1,0 +1,12 @@
+---
+compose_update_units_directory: /etc/systemd/system
+compose_update_unit_prefix: compose-update
+compose_update_docker_binary: /usr/bin/docker
+compose_update_git_binary: /usr/bin/git
+# Defaults for manifest entries that do not set them explicitly.
+compose_update_on_calendar: "Sat *-*-* 03:00:00"
+compose_update_randomized_delay: 30m
+compose_update_git_pull: false
+# Compose projects updated on a timer. Every entry needs a unique name, the
+# directory holding its compose file and the user the update runs as.
+compose_update_jobs: []

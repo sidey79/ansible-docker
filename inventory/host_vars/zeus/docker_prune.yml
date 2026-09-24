@@ -1,0 +1,8 @@
+---
+# Replaces /etc/cron.weekly/dockerprune. That job ran weekly, removed every
+# unused image regardless of age and kept the rest for 72h; this one runs daily
+# and spares anything touched within the last 96h.
+docker_prune_until: 96h
+docker_prune_on_calendar: "*-*-* 04:00:00"
+docker_prune_obsolete_cron_files:
+  - /etc/cron.weekly/dockerprune

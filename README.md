@@ -277,3 +277,49 @@ also nur den Diff der Units. Nach dem Rollout zeigt
 Test geht mit `sudo systemctl start compose-update-docker-portainer-cfg.service`
 und das Ergebnis steht in
 `journalctl -u compose-update-docker-portainer-cfg.service`.
+
+## Täglicher Docker-Aufräumjob auf zeus
+
+Die Rolle `docker_prune` legt `docker-prune.service` und `docker-prune.timer`
+unter `/etc/systemd/system/` an und aktiviert den Timer. Der Service ist ein
+`Type=oneshot` und räumt der Reihe nach Container, Images, Netzwerke und
+Build-Cache auf — jeweils mit `--filter until=96h`, es wird also nichts
+angefasst, was in den letzten 96 Stunden noch gebraucht wurde. Volumes bleiben
+bewusst außen vor: dort liegen Daten, und Dockers `until`-Filter greift für sie
+ohnehin nicht.
+
+Die Einstellungen stehen in `inventory/host_vars/zeus/docker_prune.yml`:
+
+```yaml
+docker_prune_until: 96h
+docker_prune_on_calendar: "*-*-* 04:00:00"
+docker_prune_obsolete_cron_files:
+  - /etc/cron.weekly/dockerprune
+```
+
+Alles Weitere — Unit-Name, Docker-Binary, Benutzer (`root`), `TimeoutStartSec`
+und welche Ressourcentypen überhaupt aufgeräumt werden — kommt aus
+`roles/docker_prune/defaults/main.yml`. `TimeoutStartSec` steht auf `30min`,
+weil ein großer Prune die systemd-Voreinstellung von 90 Sekunden reißt und dann
+mittendrin abgebrochen würde.
+
+Der Job ersetzt den bisherigen Cronjob `/etc/cron.weekly/dockerprune`. Die Rolle
+löscht die dort gelistete Datei, aber erst nachdem der Timer aktiv ist, damit
+der Host nie ganz ohne Aufräumjob dasteht. Inhaltlich sind das drei
+Unterschiede: der Lauf ist täglich statt wöchentlich, `docker image prune -a`
+bekommt einen Altersfilter statt jedes ungenutzte Image sofort zu entfernen,
+und die Grenze liegt bei 96h statt 72h. Beim Image-Filter zählt Docker das
+Erstellungsdatum des Images, nicht den letzten Zugriff — ein frisch gezogenes,
+aber altes Image fällt also beim ersten Lauf, sobald es niemand mehr verwendet.
+
+```bash
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/docker_prune.yml --limit zeus --syntax-check
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/docker_prune.yml --limit zeus --check --diff --ask-become-pass --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/docker_prune.yml --limit zeus --ask-become-pass --vault-password-file .vault_pass
+```
+
+Wie bei `compose_update` überspringt der `--check`-Lauf das Aktivieren des
+Timers, weil dort keine Unit-Dateien geschrieben werden. Nach dem Rollout zeigt
+`systemctl list-timers docker-prune.timer` den nächsten Lauf, ein manueller Test
+geht mit `sudo systemctl start docker-prune.service` und das Ergebnis steht in
+`journalctl -u docker-prune.service`.

@@ -1,0 +1,58 @@
+---
+- name: Validate Docker prune settings
+  ansible.builtin.assert:
+    that:
+      - docker_prune_unit_name is match('^[A-Za-z0-9][A-Za-z0-9._-]*$')
+      - docker_prune_user is match('^[a-z_][a-z0-9_-]*$')
+      - docker_prune_until is match('^[0-9]+[smh]$')
+      - docker_prune_on_calendar | length > 0
+      - docker_prune_containers or docker_prune_images or docker_prune_networks or docker_prune_build_cache
+    fail_msg: >-
+      docker_prune needs a Go duration such as 96h in docker_prune_until, an
+      OnCalendar expression and at least one resource type to prune.
+
+- name: Validate obsolete cron job manifest
+  ansible.builtin.assert:
+    that:
+      - docker_prune_obsolete_cron_files is sequence
+      - docker_prune_obsolete_cron_files is not string
+      - docker_prune_obsolete_cron_files | select('match', '^/') | list | length == docker_prune_obsolete_cron_files | length
+    fail_msg: docker_prune_obsolete_cron_files must be a list of absolute paths.
+
+- name: Install Docker prune service
+  ansible.builtin.template:
+    src: docker-prune.service.j2
+    dest: "{{ docker_prune_units_directory }}/{{ docker_prune_unit_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+
+- name: Install Docker prune timer
+  ansible.builtin.template:
+    src: docker-prune.timer.j2
+    dest: "{{ docker_prune_units_directory }}/{{ docker_prune_unit_name }}.timer"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+
+- name: Reload systemd before applying the timer state
+  ansible.builtin.meta: flush_handlers
+
+# Skipped in check mode: the unit files are not written there, so systemd
+# cannot resolve the timer the task would enable.
+- name: Enable and start Docker prune timer
+  ansible.builtin.systemd_service:
+    name: "{{ docker_prune_unit_name }}.timer"
+    enabled: true
+    state: started
+  when: not ansible_check_mode
+
+# Removed only after the timer is in place, so the host is never left without
+# any prune at all.
+- name: Remove cron jobs superseded by the Docker prune timer
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ docker_prune_obsolete_cron_files }}"

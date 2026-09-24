@@ -1,0 +1,22 @@
+# Managed by Ansible (roles/docker_prune). Local changes will be overwritten.
+[Unit]
+Description=Prune Docker data unused for {{ docker_prune_until }}
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User={{ docker_prune_user }}
+TimeoutStartSec={{ docker_prune_timeout }}
+{% if docker_prune_containers | bool %}
+ExecStart={{ docker_prune_docker_binary }} container prune --force --filter until={{ docker_prune_until }}
+{% endif %}
+{% if docker_prune_images | bool %}
+ExecStart={{ docker_prune_docker_binary }} image prune --all --force --filter until={{ docker_prune_until }}
+{% endif %}
+{% if docker_prune_networks | bool %}
+ExecStart={{ docker_prune_docker_binary }} network prune --force --filter until={{ docker_prune_until }}
+{% endif %}
+{% if docker_prune_build_cache | bool %}
+ExecStart={{ docker_prune_docker_binary }} buildx prune --force --filter until={{ docker_prune_until }}
+{% endif %}

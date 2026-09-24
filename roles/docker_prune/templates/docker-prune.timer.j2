@@ -1,0 +1,11 @@
+# Managed by Ansible (roles/docker_prune). Local changes will be overwritten.
+[Unit]
+Description=Scheduled prune of unused Docker data
+
+[Timer]
+OnCalendar={{ docker_prune_on_calendar }}
+RandomizedDelaySec={{ docker_prune_randomized_delay }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

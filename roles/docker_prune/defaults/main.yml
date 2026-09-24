@@ -1,0 +1,23 @@
+---
+docker_prune_units_directory: /etc/systemd/system
+docker_prune_unit_name: docker-prune
+docker_prune_docker_binary: /usr/bin/docker
+# root needs no docker group membership and matches the cron job this timer
+# replaces.
+docker_prune_user: root
+# Only data that has been unused for this long is removed. Docker expects a Go
+# duration, so hours are the largest unit it understands.
+docker_prune_until: 96h
+docker_prune_on_calendar: "*-*-* 04:00:00"
+docker_prune_randomized_delay: 30m
+# A large prune easily outlives the systemd default of 90s, which would kill the
+# job halfway through.
+docker_prune_timeout: 30min
+# Resources the job prunes, in the order the service runs them. Volumes are
+# deliberately absent: they hold data and Docker's until filter ignores them.
+docker_prune_containers: true
+docker_prune_images: true
+docker_prune_networks: true
+docker_prune_build_cache: true
+# Cron jobs superseded by this timer. Listed paths are removed from the host.
+docker_prune_obsolete_cron_files: []

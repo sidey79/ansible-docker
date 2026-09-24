@@ -1,0 +1,7 @@
+---
+- name: Manage the scheduled Docker prune
+  hosts: docker_prune_hosts
+  become: true
+  gather_facts: false
+  roles:
+    - docker_prune

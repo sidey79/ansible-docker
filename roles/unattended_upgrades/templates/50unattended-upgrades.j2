@@ -1,6 +1,15 @@
 // Managed by Ansible.
+{% set release = raspberrypi_release | default('trixie') %}
+// Debian archive and the Raspberry Pi repo. Docker (download.docker.com) is
+// deliberately not listed, so docker-ce is never restarted unattended.
 Unattended-Upgrade::Origins-Pattern {
-        "o=Raspbian,n={{ raspberrypi_release | default('trixie') }}";
+        "origin=Debian,n={{ release }}";
+        "origin=Debian,n={{ release }}-updates";
+        "origin=Debian,n={{ release }}-security";
+        "origin=Raspberry Pi Foundation,n={{ release }}";
 };
+// Kernel and firmware updates only take effect after a reboot.
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:00";
 Unattended-Upgrade::Mail "root";
-Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";

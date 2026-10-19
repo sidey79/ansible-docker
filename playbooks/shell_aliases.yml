@@ -1,0 +1,7 @@
+---
+- name: Manage shell aliases and functions
+  hosts: shell_alias_hosts
+  become: false
+  gather_facts: true
+  roles:
+    - shell_aliases

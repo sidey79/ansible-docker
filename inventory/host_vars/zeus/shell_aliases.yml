@@ -1,0 +1,4 @@
+---
+shell_aliases_snippets:
+  - name: fhem-devcontainer
+    src: fhem-devcontainer.sh

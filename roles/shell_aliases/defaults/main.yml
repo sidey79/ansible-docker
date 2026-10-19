@@ -1,0 +1,5 @@
+---
+shell_aliases_home: "{{ ansible_user_dir }}"
+# Snippets are installed to ~/.bash_aliases.d/<name>.sh and sourced from
+# ~/.bash_aliases. Each entry: name, src (file of this role), optional state.
+shell_aliases_snippets: []

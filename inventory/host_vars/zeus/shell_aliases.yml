@@ -1,0 +1,6 @@
+---
+shell_aliases_snippets:
+  - name: fhem-devcontainer
+    src: fhem-devcontainer.sh
+  - name: mercedes-vm
+    src: mercedes-vm.sh

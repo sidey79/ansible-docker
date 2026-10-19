@@ -323,3 +323,25 @@ Timers, weil dort keine Unit-Dateien geschrieben werden. Nach dem Rollout zeigt
 `systemctl list-timers docker-prune.timer` den nächsten Lauf, ein manueller Test
 geht mit `sudo systemctl start docker-prune.service` und das Ergebnis steht in
 `journalctl -u docker-prune.service`.
+
+## Shell-Aliase und -Funktionen auf zeus
+
+Die Rolle `shell_aliases` legt Snippets unter `~/.bash_aliases.d/<name>.sh` ab
+und bindet sie über einen verwalteten Block in `~/.bash_aliases` ein. Von Hand
+gepflegte Einträge in `~/.bash_aliases` bleiben dabei erhalten. Welche Snippets
+ein Host bekommt, steht in `inventory/host_vars/<host>/shell_aliases.yml`; die
+Dateien liegen in `roles/shell_aliases/files/`.
+
+```bash
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/shell_aliases.yml --check --diff --vault-password-file .vault_pass
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/shell_aliases.yml --vault-password-file .vault_pass
+```
+
+Das Snippet `fhem-devcontainer` stellt Abkürzungen für den RFFHEM-Devcontainer
+bereit:
+
+- `fsvn <args>` führt `svn` in der FHEM-SVN-Working-Copy im Container aus,
+  etwa `fsvn update` oder `fsvn commit FHEM/00_SIGNALduino.pm CHANGED -m "..."`.
+- `fsvn-sync [--dry-run]` startet `sync-module-to-svn.sh` aus dem RFFHEM-Repo.
+- `fsvn-shell` öffnet eine Shell in der Working Copy mit geladenem SVN-Key, die
+  Passphrase wird dort nur einmal abgefragt.

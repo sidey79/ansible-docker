@@ -1,0 +1,50 @@
+---
+- name: Validate shell alias snippets
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.name is match('^[A-Za-z0-9_.-]+$')
+      - item.state | default('present') in ['present', 'absent']
+      - item.state | default('present') == 'absent' or item.src is defined
+    fail_msg: "Invalid shell alias snippet {{ item.name | default('unknown') }}"
+  loop: "{{ shell_aliases_snippets }}"
+  loop_control:
+    label: "{{ item.name | default('unknown') }}"
+
+- name: Ensure snippet directory exists
+  ansible.builtin.file:
+    path: "{{ shell_aliases_home }}/.bash_aliases.d"
+    state: directory
+    mode: "0755"
+
+- name: Source managed snippets from ~/.bash_aliases
+  ansible.builtin.blockinfile:
+    path: "{{ shell_aliases_home }}/.bash_aliases"
+    create: true
+    mode: "0644"
+    marker: "# {mark} ANSIBLE MANAGED SHELL ALIASES"
+    block: |
+      for _snippet in ~/.bash_aliases.d/*.sh; do
+        [ -r "$_snippet" ] && . "$_snippet"
+      done
+      unset _snippet
+
+- name: Install shell alias snippets
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ shell_aliases_home }}/.bash_aliases.d/{{ item.name }}.sh"
+    mode: "0644"
+  loop: "{{ shell_aliases_snippets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.state | default('present') == 'present'
+
+- name: Remove explicitly absent shell alias snippets
+  ansible.builtin.file:
+    path: "{{ shell_aliases_home }}/.bash_aliases.d/{{ item.name }}.sh"
+    state: absent
+  loop: "{{ shell_aliases_snippets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.state | default('present') == 'absent'

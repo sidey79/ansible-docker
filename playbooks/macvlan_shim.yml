@@ -1,0 +1,7 @@
+---
+- name: Manage macvlan shim on Zeus
+  hosts: macvlan_shim_hosts
+  become: true
+  gather_facts: false
+  roles:
+    - macvlan_shim

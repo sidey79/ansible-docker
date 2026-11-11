@@ -1,0 +1,9 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart matter-ble-proxy
+  ansible.builtin.systemd:
+    name: matter-ble-proxy
+    state: restarted

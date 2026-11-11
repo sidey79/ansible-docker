@@ -345,3 +345,31 @@ bereit:
 - `fsvn-sync [--dry-run]` startet `sync-module-to-svn.sh` aus dem RFFHEM-Repo.
 - `fsvn-shell` öffnet eine Shell in der Working Copy mit geladenem SVN-Key, die
   Passphrase wird dort nur einmal abgefragt.
+
+## Matter BLE Proxy
+
+`playbooks/matter_ble_proxy.yml` installiert `matter-ble-proxy` (PyPI) in ein
+venv unter `/opt/matter-ble-proxy` und betreibt es als systemd-Dienst
+`matter-ble-proxy`. Der Proxy verbindet sich ausgehend per WebSocket mit dem
+Matter.js-Server (`matter_ble_proxy_server_url`, dieser muss mit `--ble-proxy`
+laufen). Optional richtet die Rolle UFW ein (`matter_ble_proxy_manage_ufw`,
+SSH-Port `matter_ble_proxy_ssh_port` wird vor der Aktivierung freigegeben).
+
+Hinweise:
+
+- Das Paket benötigt Python >= 3.12 (Raspberry Pi OS Trixie: 3.13, Bookworm: nur
+  3.11). Die Rolle bricht auf Bookworm mit einer klaren Meldung ab; alternativ
+  `matter_ble_proxy_python` auf einen neueren Interpreter setzen.
+- Die CLI kennt nur `--server` und `--log-level`, keine Adapterauswahl. Ein
+  gesetztes `matter_ble_proxy_adapter` wird daher abgewiesen, solange
+  `matter_ble_proxy_adapter_flag_supported` nicht `true` ist.
+- Die Rolle nutzt `community.general` (siehe `requirements.yml`).
+- Die Rolle konfiguriert UFW unabhängig von der Rolle `firewall`; beide nicht
+  auf demselben Host mischen.
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/matter_ble_proxy.yml --limit pi3 --syntax-check
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/matter_ble_proxy.yml --limit pi3 --check --diff -e matter_ble_proxy_server_url=ws://HOST:5580/ble
+docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/matter_ble_proxy.yml --limit pi3 -e matter_ble_proxy_server_url=ws://HOST:5580/ble
+```

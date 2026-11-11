@@ -1,0 +1,7 @@
+---
+- name: Install the Matter BLE proxy
+  hosts: matter_ble_proxy_hosts
+  become: true
+  gather_facts: true
+  roles:
+    - matter_ble_proxy

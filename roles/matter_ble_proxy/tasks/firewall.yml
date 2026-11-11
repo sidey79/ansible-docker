@@ -1,0 +1,26 @@
+---
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow incoming SSH before enabling the firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ matter_ble_proxy_ssh_port | string }}"
+    proto: tcp
+
+- name: Deny incoming traffic by default
+  community.general.ufw:
+    default: deny
+    direction: incoming
+
+# The proxy only opens an outgoing WebSocket connection.
+- name: Allow outgoing traffic by default
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled

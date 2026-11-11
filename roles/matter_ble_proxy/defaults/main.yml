@@ -1,0 +1,25 @@
+---
+# WebSocket URL of the Matter.js server's BLE proxy endpoint (matter-server must
+# run with --ble-proxy).
+matter_ble_proxy_server_url: "ws://192.168.1.100:5580/ble"
+# Optional Bluetooth adapter such as hci0 or hci1. Empty means no adapter flag.
+# NOTE: matter-ble-proxy 1.5.x has no adapter option (its CLI only knows
+# --server and --log-level), so a non-empty value is rejected unless
+# matter_ble_proxy_adapter_flag_supported is true.
+matter_ble_proxy_adapter: ""
+matter_ble_proxy_adapter_flag: "--adapter"
+matter_ble_proxy_adapter_flag_supported: false
+matter_ble_proxy_log_level: INFO
+
+matter_ble_proxy_user: matter-proxy
+matter_ble_proxy_group: bluetooth
+matter_ble_proxy_install_dir: /opt/matter-ble-proxy
+# present or latest (latest forces upgrades).
+matter_ble_proxy_package_state: present
+# matter-ble-proxy requires Python >= 3.12 (Raspberry Pi OS Trixie ships 3.13,
+# Bookworm only 3.11). Point this to a newer interpreter on older systems.
+matter_ble_proxy_python: python3
+
+matter_ble_proxy_manage_ufw: true
+# Kept open before UFW is enabled so the play cannot lock you out.
+matter_ble_proxy_ssh_port: 22

@@ -91,6 +91,3 @@
     enabled: true
     state: started
 
-- name: Configure the firewall
-  ansible.builtin.include_tasks: firewall.yml
-  when: matter_ble_proxy_manage_ufw | bool

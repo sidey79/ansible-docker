@@ -352,8 +352,9 @@ bereit:
 venv unter `/opt/matter-ble-proxy` und betreibt es als systemd-Dienst
 `matter-ble-proxy`. Der Proxy verbindet sich ausgehend per WebSocket mit dem
 Matter.js-Server (`matter_ble_proxy_server_url`, dieser muss mit `--ble-proxy`
-laufen). Optional richtet die Rolle UFW ein (`matter_ble_proxy_manage_ufw`,
-SSH-Port `matter_ble_proxy_ssh_port` wird vor der Aktivierung freigegeben).
+laufen). Die Rolle ändert keine Firewall-Regeln: Der Proxy baut nur ausgehende
+Verbindungen auf, die die Rolle `firewall` (iptables, OUTPUT ACCEPT) bereits
+erlaubt; eingehende Ports werden nicht benötigt.
 
 Hinweise:
 
@@ -363,12 +364,8 @@ Hinweise:
 - Die CLI kennt nur `--server` und `--log-level`, keine Adapterauswahl. Ein
   gesetztes `matter_ble_proxy_adapter` wird daher abgewiesen, solange
   `matter_ble_proxy_adapter_flag_supported` nicht `true` ist.
-- Die Rolle nutzt `community.general` (siehe `requirements.yml`).
-- Die Rolle konfiguriert UFW unabhängig von der Rolle `firewall`; beide nicht
-  auf demselben Host mischen.
 
 ```bash
-ansible-galaxy collection install -r requirements.yml
 docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/matter_ble_proxy.yml --limit pi3 --syntax-check
 docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/matter_ble_proxy.yml --limit pi3 --check --diff -e matter_ble_proxy_server_url=ws://HOST:5580/ble
 docker compose exec ansible ansible-playbook -i inventory/hosts.ini playbooks/matter_ble_proxy.yml --limit pi3 -e matter_ble_proxy_server_url=ws://HOST:5580/ble

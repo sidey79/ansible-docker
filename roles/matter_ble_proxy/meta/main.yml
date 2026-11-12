@@ -14,5 +14,3 @@ galaxy_info:
     - matter
     - bluetooth
 dependencies: []
-collections:
-  - community.general

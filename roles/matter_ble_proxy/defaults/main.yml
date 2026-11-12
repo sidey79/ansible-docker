@@ -20,6 +20,5 @@ matter_ble_proxy_package_state: present
 # Bookworm only 3.11). Point this to a newer interpreter on older systems.
 matter_ble_proxy_python: python3
 
-matter_ble_proxy_manage_ufw: true
-# Kept open before UFW is enabled so the play cannot lock you out.
-matter_ble_proxy_ssh_port: 22
+# No firewall handling here: the proxy only connects outbound. The firewall role
+# (iptables, INPUT drop, OUTPUT accept) already allows that, no port is needed.

@@ -1,0 +1,12 @@
+---
+# Host-side macvlan shim so that zeus, and containers in bridge networks on
+# zeus, can reach macvlan containers on homelan. The host itself cannot talk to
+# its own macvlan children on the parent NIC. The routes name the macvlan
+# containers that must be reachable.
+macvlan_shim_name: macvlan-shim
+macvlan_shim_parent: eno1
+macvlan_shim_ipv4: 10.2.11.20/32
+macvlan_shim_ipv4_route: 10.2.11.23/32
+macvlan_shim_ipv6: fd00:10:2:11::20/128
+macvlan_shim_ipv6_route: fd00:10:2:11::23/128
+macvlan_shim_unit_name: macvlan-shim.service

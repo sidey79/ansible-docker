@@ -1,0 +1,21 @@
+# Managed by Ansible (role macvlan_shim). Do not edit by hand.
+[Unit]
+Description=Macvlan shim for host access to homelan macvlan containers
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Remove a leftover shim from an earlier run; ignore the error if none exists.
+ExecStartPre=-/usr/sbin/ip link del {{ macvlan_shim_name }}
+ExecStart=/usr/sbin/ip link add {{ macvlan_shim_name }} link {{ macvlan_shim_parent }} type macvlan mode bridge
+ExecStart=/usr/sbin/ip addr add {{ macvlan_shim_ipv4 }} dev {{ macvlan_shim_name }}
+ExecStart=/usr/sbin/ip -6 addr add {{ macvlan_shim_ipv6 }} dev {{ macvlan_shim_name }}
+ExecStart=/usr/sbin/ip link set {{ macvlan_shim_name }} up
+ExecStart=/usr/sbin/ip route add {{ macvlan_shim_ipv4_route }} dev {{ macvlan_shim_name }}
+ExecStart=/usr/sbin/ip -6 route add {{ macvlan_shim_ipv6_route }} dev {{ macvlan_shim_name }}
+ExecStop=-/usr/sbin/ip link del {{ macvlan_shim_name }}
+
+[Install]
+WantedBy=multi-user.target

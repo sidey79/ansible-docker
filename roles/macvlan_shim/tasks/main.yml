@@ -1,0 +1,22 @@
+---
+- name: Install macvlan shim systemd unit
+  ansible.builtin.template:
+    src: macvlan-shim.service.j2
+    dest: "/etc/systemd/system/{{ macvlan_shim_unit_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: macvlan_shim_unit
+  notify:
+    - Reload systemd
+    - Restart macvlan shim
+
+# In check mode the unit file is not written yet, so systemd cannot find the
+# service. Skip the task in that case instead of failing the dry run.
+- name: Enable and start macvlan shim
+  ansible.builtin.systemd:
+    name: "{{ macvlan_shim_unit_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not (ansible_check_mode and macvlan_shim_unit is changed)

@@ -1,0 +1,11 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart macvlan shim
+  ansible.builtin.systemd:
+    name: "{{ macvlan_shim_unit_name }}"
+    state: restarted
+  # The unit file does not exist yet in a dry run.
+  when: not ansible_check_mode

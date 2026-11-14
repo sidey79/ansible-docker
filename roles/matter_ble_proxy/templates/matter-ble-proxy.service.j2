@@ -1,0 +1,28 @@
+# {{ ansible_managed }}
+#
+# CLI of matter-ble-proxy 1.5.x (matter_ble_proxy/cli.py): only --server and
+# --log-level exist. There is NO --adapter/--device/--hci flag, Bleak uses the
+# default BlueZ adapter. The adapter flag below is therefore only rendered when
+# matter_ble_proxy_adapter is set (and matter_ble_proxy_adapter_flag_supported
+# confirms the installed version understands it).
+# The CLI exits when the server disconnects, hence Restart=always.
+[Unit]
+Description=Matter BLE proxy
+After=network-online.target bluetooth.service
+Wants=network-online.target bluetooth.service
+
+[Service]
+Type=simple
+User={{ matter_ble_proxy_user }}
+Group={{ matter_ble_proxy_group }}
+ExecStart={{ matter_ble_proxy_install_dir }}/venv/bin/matter-ble-proxy --server {{ matter_ble_proxy_server_url }} --log-level {{ matter_ble_proxy_log_level }}{% if matter_ble_proxy_adapter | length > 0 %} {{ matter_ble_proxy_adapter_flag }} {{ matter_ble_proxy_adapter }}{% endif %}
+
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

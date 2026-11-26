@@ -48,3 +48,6 @@ ser2net_connections:
       kickolduser: true
 
 homematic_uart_enabled: true
+
+# Matter.js server (matterjs-server on macvlan) BLE proxy endpoint.
+matter_ble_proxy_server_url: "ws://10.2.11.23:5580/ble"

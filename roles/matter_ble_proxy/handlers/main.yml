@@ -3,7 +3,10 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
+# The unit file is not written in check mode, so systemd does not know the
+# service yet. Skip the restart there; the real run restarts it.
 - name: Restart matter-ble-proxy
   ansible.builtin.systemd:
     name: matter-ble-proxy
     state: restarted
+  when: not ansible_check_mode

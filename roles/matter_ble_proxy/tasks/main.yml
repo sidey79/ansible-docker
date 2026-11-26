@@ -60,6 +60,9 @@
     owner: "{{ matter_ble_proxy_user }}"
     group: "{{ matter_ble_proxy_group }}"
     mode: "0750"
+  # In check mode the service user is not created, so owner lookups and
+  # become_user would fail. These tasks run on the real run only.
+  when: not ansible_check_mode
 
 - name: Install matter-ble-proxy into the virtual environment
   ansible.builtin.pip:
@@ -70,6 +73,7 @@
   become: true
   become_user: "{{ matter_ble_proxy_user }}"
   notify: Restart matter-ble-proxy
+  when: not ansible_check_mode
 
 - name: Install the systemd unit
   ansible.builtin.template:
@@ -78,9 +82,21 @@
     owner: root
     group: root
     mode: "0644"
+  register: matter_ble_proxy_unit
   notify:
     - Reload systemd
     - Restart matter-ble-proxy
+
+# Make systemd see the unit file right away. Handler order is not guaranteed
+# when the restart handler was also notified by the pip task, which runs
+# before the unit exists; an explicit reload avoids "Could not find the
+# requested service".
+- name: Reload systemd after the unit file changed
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - matter_ble_proxy_unit is changed
+    - not ansible_check_mode
 
 - name: Apply pending handlers before starting the service
   ansible.builtin.meta: flush_handlers
@@ -90,4 +106,5 @@
     name: matter-ble-proxy
     enabled: true
     state: started
+  when: not ansible_check_mode
 
